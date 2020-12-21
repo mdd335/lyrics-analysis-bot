@@ -80,77 +80,82 @@ def retrieve_lyrics(song_id):
     URL = "http://genius.com" + path
     page = requests.get(URL)
 
+    print(URL)
+
     # Extract the page's HTML as a string
     html = BeautifulSoup(page.text, "html.parser")
 
+    song_title = get_song_title(html)
+
+    song_year = get_song_year(html)
+
+    if song_year is not None:
+        if song_year > 1799 and song_year < 2100:
+            # Realistic year found, so we continue
+
+            song_lyrics = clean_lyrics(get_song_lyrics(html))
+
+            # Return dictionary with song data
+            return {"Title": song_title, "Year": song_year, "Lyrics": song_lyrics}
+
+    # No realistic year found, so we return an empty dictionary
+    print("")
+    return "no year found"
+
+
+def get_song_lyrics(html):
+    # Scrape the song lyrics from the HTML
+    song_lyrics = html.find("div", class_="lyrics")
+    if song_lyrics is None:
+        # print("(Lyrics are not in div with class lyrics)")
+        song_lyrics = html.find('div', class_=re.compile(r'^Lyrics__Container'))
+    if song_lyrics is None:
+        print("No lyrics found")
+    else:
+        print("Found lyrics")
+        song_lyrics_string = song_lyrics.get_text(" ")
+    print("")
+    return song_lyrics_string
+
+
+def get_song_year(html):
+    # Scrape the song year from the HTML
+    # song_year = html.find("span", class_="metadata_unit-info metadata_unit-info--text_only")
+
+    release_date_element = html.find("span", string="Release Date")
+
+    if release_date_element is None:
+        release_date_element = html.find("p", string="Release Date")
+
+        if release_date_element is not None:
+            release_date = release_date_element.next_sibling
+
+    else:
+        release_date = release_date_element.next_sibling.next_sibling.get_text()
+
+    if release_date_element is not None:
+
+        if release_date is not None:
+            print("Found year: {}".format(int(release_date[-4:])))
+            return int(release_date[-4:])
+
+    print("No year found")
+    return None
+
+
+def get_song_title(html):
     # Scrape the song title from the HTML
     song_title = html.find("h1", class_="header_with_cover_art-primary_info-title")
-
     if song_title is None:
         # print("(Title is not in h1 with class header_with_cover_art-primary_info-title)")
         song_title = html.find('h1', class_=re.compile(r'^SongHeader__Title'))
-
     if song_title is None:
         print("No title found")
     else:
         song_title_string = song_title.get_text()
         print("Found title: {}".format(song_title_string))
+    return song_title_string
 
-    # Scrape the song year from the HTML
-    # song_year = html.find("span", class_="metadata_unit-info metadata_unit-info--text_only")
-    song_year = ""
-    song_year_string = ""
-
-    possible_song_years = html.find_all("span", class_="metadata_unit-info metadata_unit-info--text_only")
-
-    if possible_song_years == []:
-        # print("(Year is not in span with class metadata_unit-info metadata_unit-info--text_only)")
-        possible_song_years = html.find_all('p', class_=re.compile(r'^HeaderMetadata__Label'))
-
-    for entry in possible_song_years:
-        if entry.get_text() == "Release Date":
-            song_year = entry.next_element.next_element
-            song_year_string = entry.next_element.next_element
-
-    # if song_year is None:
-        # No song release date found, so we look for album release date
-
-    if possible_song_years == []:
-        print("No year found")
-    else:
-        song_year_int = int(song_year_string[-4:])
-        print("Found year: {}".format(song_year_string[-4:]))
-
-    if song_year and song_year_int:
-        if song_year_int > 1799 and song_year_int < 2100:
-            # Realistic year found, so we continue
-
-            # Scrape the song lyrics from the HTML
-            song_lyrics = html.find("div", class_="lyrics")
-
-            if song_lyrics is None:
-                # print("(Lyrics are not in div with class lyrics)")
-                song_lyrics = html.find('div', class_=re.compile(r'^Lyrics__Container'))
-
-            if song_lyrics is None:
-                print("No lyrics found")
-            else:
-                print("Found lyrics")
-                song_lyrics_string = song_lyrics.get_text(" ")
-
-            print("")
-
-            # Return dictionary with song data
-            return {"Title": song_title_string, "Year": song_year_int, "Lyrics": clean_lyrics(song_lyrics_string)}
-
-        else:
-            # No realistic year found, so we return an empty dictionary
-            print("")
-            return "no year found"
-    else:
-        # No realistic year found, so we return an empty dictionary
-        print("")
-        return "no year found"
 
 def connect_lyrics(song_id):
     """Constructs the path of song lyrics."""
