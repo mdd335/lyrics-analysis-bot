@@ -1,35 +1,51 @@
 import geniusscrape
 import dataanalysis
+from song import Song
 from tabulate import tabulate
 
 
-artist = "Antilopen Gang"
+artist = "The Ji (Rapper)"
 keyword = "nmzs"
 # time_span_start = 2010
 # time_span_end = 2020
 years_list = [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020]
 
+artist_id = geniusscrape.get_artist_id(artist)
 
 # Get songs as main artist
-songs = geniusscrape.get_song_id(geniusscrape.get_artist_id(artist))
-songs_ids = [song["id"] for song in songs
-    if song["primary_artist"]["id"] == artist_id]
+songs = geniusscrape.get_song_id(artist_id)
+songs_ids = [song["id"] for song in songs if song["primary_artist"]["id"] == artist_id]
 print("Found {} songs as main artist:".format(len(songs_ids)))
 print(songs_ids)
-print("")
+print(" ")
+
+song_list = []
+for song in songs:
+    if song["primary_artist"]["id"] == artist_id:
+        song_list.append(Song(song["id"]))
 
 # Get song data, remove songs without year
-songs_data_list = [geniusscrape.retrieve_lyrics(song_id) for song_id in songs_ids]
+# songs_data_list = [geniusscrape.retrieve_lyrics(song_id) for song_id in songs_ids]
+
+for song in song_list:
+    html = geniusscrape.get_song_html(song.id)
+    song.set_title(geniusscrape.get_song_title(html))
+    song.set_year(geniusscrape.get_song_year(html))
+    song.set_lyrics(geniusscrape.get_song_lyrics(html))
+
+print(song_list)
+exit()
+
 songs_data_list_cleaned = [song for song in songs_data_list if song != "no year found"]
 print("Found year and lyrics of {} songs:".format(len(songs_data_list_cleaned)))
 print(songs_data_list_cleaned)
-print("")
+print()
 
 # Get data analysis - percentages by year
 years_percentages_list = dataanalysis.analyze_by_years(songs_data_list_cleaned, years_list, keyword)
 print("Percentages:")
 print(years_percentages_list)
-print("")
+print()
 
 # Print results
 data_for_table = []

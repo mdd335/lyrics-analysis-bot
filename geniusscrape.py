@@ -1,3 +1,5 @@
+
+
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -73,6 +75,19 @@ def get_song_id(artist_id):
     return songs
 
 
+def get_song_html(song_id):
+    path = connect_lyrics(song_id)
+    URL = "http://genius.com" + path
+    page = requests.get(URL)
+
+    print(URL)
+
+    # Extract the page's HTML as a string
+    html = BeautifulSoup(page.text, "html.parser")
+
+    return html
+
+
 def retrieve_lyrics(song_id):
     """Retrieves lyrics from html page."""
 
@@ -119,8 +134,7 @@ def get_song_lyrics(html):
 
 
 def get_song_year(html):
-    # Scrape the song year from the HTML
-    # song_year = html.find("span", class_="metadata_unit-info metadata_unit-info--text_only")
+    """Scrape the song year from the HTML"""
 
     release_date_element = html.find("span", string="Release Date")
 
