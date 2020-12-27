@@ -25,9 +25,7 @@ class Genius_scraper:
         # Get songs as main artist
         songs = self.get_song_ids(artist_id)
         songs_ids = [song["id"] for song in songs if song["primary_artist"]["id"] == artist_id]
-        print("Found {} songs as main artist:".format(len(songs_ids)))
-        print(songs_ids)
-        print(" ")
+        print("Found " + str(len(songs_ids)) + " songs as main artist")
 
         song_list = []
         for song in songs:
@@ -46,7 +44,8 @@ class Genius_scraper:
             if song.year is not None:
                 if song.year in year_list:
                     song.set_lyrics(self.get_song_lyrics(html))
-                    song_list_only_songs_with_year.append(song)
+                    if song.lyrics is not None:
+                        song_list_only_songs_with_year.append(song)
 
         return song_list_only_songs_with_year
 
@@ -101,9 +100,8 @@ class Genius_scraper:
                 # If page_songs is empty, quit
                 next_page = False
                 print("All pages finished scraping")
-                print(" ")
 
-        print("Found {} songs:".format(len(songs)))
+        print("Found " + str(len(songs)) + " songs")
 
         return songs
 
@@ -113,7 +111,7 @@ class Genius_scraper:
         URL = "http://genius.com" + path
         page = requests.get(URL)
 
-        print("")
+        print()
         print(URL)
 
         # Extract the page's HTML as a string
@@ -169,10 +167,15 @@ class Genius_scraper:
             song_lyrics = html.find('div', class_=re.compile(r'^Lyrics__Container'))
         if song_lyrics is None:
             print("No lyrics found")
+            return None
         else:
-            print("Found lyrics")
             song_lyrics_string = song_lyrics.get_text(" ")
-        return self.clean_lyrics(song_lyrics_string)
+            if song_lyrics_string is None:
+                print("No lyrics found")
+                return None
+            else:
+                print("Found lyrics")
+                return self.clean_lyrics(song_lyrics_string)
 
     def connect_lyrics(self, song_id):
         """Constructs the path of song lyrics."""
