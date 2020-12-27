@@ -18,7 +18,8 @@ class Genius_scraper:
 
         self.base = "https://api.genius.com"
 
-    def get_song_list(self, artist):
+    def get_song_list(self, artist, year_list):
+        """Creates and returns a list of song objects with title, year and lyrics for an artist"""
         artist_id = self.get_artist_id(artist)
 
         # Get songs as main artist
@@ -36,14 +37,17 @@ class Genius_scraper:
         # Get song data, remove songs without year
         # songs_data_list = [geniusscrape.retrieve_lyrics(song_id) for song_id in songs_ids]
 
+        song_list_only_songs_with_year = []
+
         for song in song_list:
             html = self.get_song_html(song.id)
             song.set_title(self.get_song_title(html))
             song.set_year(self.get_song_year(html))
             if song.year is not None:
-                song.set_lyrics(self.get_song_lyrics(html))
+                if song.year in year_list:
+                    song.set_lyrics(self.get_song_lyrics(html))
+                    song_list_only_songs_with_year.append(song)
 
-        song_list_only_songs_with_year = [song for song in song_list if song.year is not None]
         return song_list_only_songs_with_year
 
     def get_json(self, path, params=None, headers=None):
@@ -63,6 +67,7 @@ class Genius_scraper:
         return response.json()
 
     def get_artist_id(self, artist_name):
+        """Gets the id of an artist from Genius."""
         path ="search"
         params = {'q' : artist_name}
         data = self.get_json(path = path, params = params)
@@ -103,6 +108,7 @@ class Genius_scraper:
         return songs
 
     def get_song_html(self, song_id):
+        """Gets the html of a song via request and cleans it with Beautiful Soup"""
         path = self.connect_lyrics(song_id)
         URL = "http://genius.com" + path
         page = requests.get(URL)
@@ -116,7 +122,7 @@ class Genius_scraper:
         return html
 
     def get_song_title(self, html):
-        # Scrape the song title from the HTML
+        """Extracts the song title from an html"""
         song_title = html.find("h1", class_="header_with_cover_art-primary_info-title")
         if song_title is None:
             # print("(Title is not in h1 with class header_with_cover_art-primary_info-title)")
@@ -129,7 +135,7 @@ class Genius_scraper:
         return song_title_string
 
     def get_song_year(self, html):
-        """Scrape the song year from the HTML"""
+        """Extracts the release year from an html"""
 
         release_date_element = html.find("span", string="Release Date")
 
@@ -156,7 +162,7 @@ class Genius_scraper:
         return None
 
     def get_song_lyrics(self, html):
-        # Scrape the song lyrics from the HTML
+        """Extracts the lyrics from an html"""
         song_lyrics = html.find("div", class_="lyrics")
         if song_lyrics is None:
             # print("(Lyrics are not in div with class lyrics)")
