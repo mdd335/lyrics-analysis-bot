@@ -1,31 +1,36 @@
 from song import Song
 
 
-def analyze_by_years(song_list, years_list, keyword):
-    """Returns list of percentages by years"""
+class Data_analyzer:
 
-    keyword = " " + keyword + " "
-    years_percentages_list = []
+    def __init__(self):
+        self.test = "test"
 
-    for year in years_list:
+    def percentage_of_songs_with_keyword_per_year(self, song_list, years_list, keyword):
+        """Returns list of percentages by years"""
 
-        num_of_songs = 0
-        num_of_songs_with_keyword = 0
-        num_of_songs_without_keyword = 0
+        keyword = " " + keyword + " "
+        years_percentages_list = []
 
-        for song in song_list:
-            if song.year == year:
-                num_of_songs +=1
-                if song.lyrics.find(keyword) == -1:
-                    num_of_songs_without_keyword += 1
-                else:
-                    num_of_songs_with_keyword += 1
+        for year in years_list:
 
-        if num_of_songs == 0:
-            percentage = 0
-        else:
-            percentage = num_of_songs_with_keyword / num_of_songs
+            num_of_songs = 0
+            num_of_songs_with_keyword = 0
+            num_of_songs_without_keyword = 0
 
-        years_percentages_list.append({"Year": year, "Percentage": percentage, "n with keyword": num_of_songs_with_keyword, "n total": num_of_songs})
+            for song in song_list:
+                if song.year == year:
+                    num_of_songs +=1
+                    if song.lyrics.find(keyword) == -1:
+                        num_of_songs_without_keyword += 1
+                    else:
+                        num_of_songs_with_keyword += 1
 
-    return years_percentages_list
+            if num_of_songs == 0:
+                percentage = 0
+            else:
+                percentage = (num_of_songs_with_keyword / num_of_songs) * 100
+
+            years_percentages_list.append({"Year": year, "Percentage": percentage, "n with keyword": num_of_songs_with_keyword, "n total": num_of_songs})
+
+        return years_percentages_list

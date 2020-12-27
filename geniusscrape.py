@@ -3,6 +3,7 @@ import requests
 import re
 from song import Song
 
+
 class Genius_scraper:
 
     def __init__(self):
