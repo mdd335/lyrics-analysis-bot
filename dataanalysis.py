@@ -1,6 +1,3 @@
-from song import Song
-
-
 class Data_analyzer:
 
     def __init__(self):
@@ -13,20 +10,31 @@ class Data_analyzer:
 
         for year in years:
 
-            # Count number of total songs in year
+            # Create dictionary for year
+            year_object = {"Year": year}
+
+            # Count number of total songs in year and add to dictionary
             num_of_songs = 0
             for song in songs:
                 if song.year == year:
                     num_of_songs += 1
+            year_object["n total"] = num_of_songs
 
-            # Get percentage and n for each keyword
-            percentages_and_n_list = []
+            # Get percentage and n for each keyword and add to dictionary
             for keyword in keywords:
                 percentage, n_with_keyword = self.one_artist_one_keyword_one_year(songs, year, keyword)
-                percentages_and_n_list.append({"Keyword": keyword, "%": percentage, "n": n_with_keyword})
+                year_object["% containing " + keyword] = percentage
+                year_object["n containing " + keyword] = n_with_keyword
 
-            # Fill data list
-            data_list.append({"Year": year, "n total": num_of_songs, "Keyword data": percentages_and_n_list})
+            data_list.append(year_object)
+
+        # Create last row (total)
+        total_object = {"Year": "all years", "n total": len(songs)}
+        for keyword in keywords:
+            percentage, n_with_keyword = self.one_artist_one_keyword_all_years(songs, keyword)
+            total_object["% containing " + keyword] = percentage
+            total_object["n containing " + keyword] = n_with_keyword
+        data_list.append(total_object)
 
         return data_list
 
@@ -45,41 +53,26 @@ class Data_analyzer:
                     n_with_keyword += 1
 
         if num_of_songs == 0:
-            percentage = 0
+            percentage = 0.0
         else:
             percentage = (n_with_keyword / num_of_songs) * 100
 
         return percentage, n_with_keyword
 
-
-
-
-
-    def percentage_of_songs_with_keyword_per_year(self, song_list, years_list, keyword):
-        """Returns list of percentages by years for one artist, one keyword"""
+    def one_artist_one_keyword_all_years(self, songs, keyword):
+        """Returns list of percentages for one artist, one keyword, all years"""
 
         keyword = " " + keyword + " "
-        years_percentages_list = []
 
-        for year in years_list:
+        n_with_keyword = 0
 
-            num_of_songs = 0
-            num_of_songs_with_keyword = 0
-            num_of_songs_without_keyword = 0
+        for song in songs:
+            if song.lyrics.find(keyword) != -1:
+                n_with_keyword += 1
 
-            for song in song_list:
-                if song.year == year:
-                    num_of_songs +=1
-                    if song.lyrics.find(keyword) == -1:
-                        num_of_songs_without_keyword += 1
-                    else:
-                        num_of_songs_with_keyword += 1
+        if len(songs) == 0:
+            percentage = 0
+        else:
+            percentage = (n_with_keyword / len(songs)) * 100
 
-            if num_of_songs == 0:
-                percentage = 0
-            else:
-                percentage = (num_of_songs_with_keyword / num_of_songs) * 100
-
-            years_percentages_list.append({"Year": year, "Percentage": percentage, "n with keyword": num_of_songs_with_keyword, "n total": num_of_songs})
-
-        return years_percentages_list
+        return percentage, n_with_keyword

@@ -74,7 +74,10 @@ def keyword_chosen(update: Update, context: CallbackContext) -> int:
 
 def analysis_started(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while.')
-    update.message.reply_text(lyricsanalyzer.analyze_artist(artists[0], keywords, years))
+    csv_file, example_string = lyricsanalyzer.analyze_artist(artists[0], keywords, range(years[0], (years[1] + 1)))
+    update.message.reply_text(f'Here is the data as a csv file:')
+    context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
+    update.message.reply_text(example_string)
     update.message.reply_text(f'Thank you. Type /start anytime to start over.')
 
     return ConversationHandler.END

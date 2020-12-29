@@ -1,14 +1,11 @@
 from dataanalysis import Data_analyzer
 from geniusscrape import Genius_scraper
 from tabulate import tabulate
+import csv
+import io
 
 
-def analyze_artist(artist, keywords, years_start_end):
-
-    # User input
-    # keywords = ["ich", "du"]
-    years = range(years_start_end[0], (years_start_end[1] + 1))
-
+def analyze_artist(artist, keywords, years):
 
     # Get songs from Genius
     my_genius_scraper = Genius_scraper()
@@ -20,16 +17,23 @@ def analyze_artist(artist, keywords, years_start_end):
         song_titles.append(song.title)
     print(song_titles)
 
-
     # Get data analysis - percentages by year
     my_data_analyzer = Data_analyzer()
     data_list = my_data_analyzer.one_artist_several_keywords(songs, years, keywords)
     print("Percentages:")
     print(data_list)
-    print()
 
+    # Make example sentence
+    example_string = f'Example: In {years[0]} , {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {data_list[0].get("% containing " + keywords[0])} %.'
 
-    # Make table
+    # Make and name CSV file
+    csv_file = make_csv(data_list)
+    keywords_string = ' '.join([elem for elem in keywords])
+    csv_file.name = f'Lyrics analysis {artist} {str(years[0])} - {str(years[-1])} {keywords_string}.csv'
+
+    return csv_file, example_string
+
+    ''' # Make and print table
     data_for_table = []
     for year in data_list:
         year_data = {"Year": year.get("Year"), "n total": year.get("n total")}
@@ -39,16 +43,28 @@ def analyze_artist(artist, keywords, years_start_end):
             year_data["n containing " + keyword_string] = keyword.get("n")
         data_for_table.append(year_data)
     output = tabulate(data_for_table, headers="keys")
-
-
-    # Print table
-    print("Artist: " + artist)
-    print("Keywords: " + str(keywords))
-    print()
     print(output)
-    print()
-    # print("Example: In " + str(data_list[0].get("Year")) + ", " + str(data_list[0].get("Keyword data")[0].get("n")) + " of the " + str(data_list[0].get("n total")) + " songs by " + artist + " contain the word " + keywords[0] + ". That is " + str(data_list[0].get("Keyword data")[0].get("%")) + " %.")
+    print("Example: In " + str(data_list[0].get("Year")) + ", " + str(data_list[0].get("Keyword data")[0].get("n")) + " of the " + str(data_list[0].get("n total")) + " songs by " + artist + " contain the word " + keywords[0] + ". That is " + str(data_list[0].get("Keyword data")[0].get("%")) + " %.")
+    '''
 
-    return "Example: In " + str(data_list[0].get("Year")) + ", " + str(data_list[0].get("Keyword data")[0].get("n")) + " of the " + str(data_list[0].get("n total")) + " songs by " + artist + " contain the word " + keywords[0] + ". That is " + str(data_list[0].get("Keyword data")[0].get("%")) + " %."
+
+def make_csv(data_list):
+
+    # Make 2D list
+    list_for_csv = [list(data_list[0].keys())]
+    for year in data_list:
+        list_for_csv.append(list(year.values()))
+
+    # Make CSV
+    s = io.StringIO()  # csv module can write data in io.StringIO buffer only
+    csv.writer(s).writerows(list_for_csv)
+    s.seek(0)
+    csv_file = io.BytesIO()  # python-telegram-bot library can send files only from io.BytesIO buffer, so we need to convert StringIO to BytesIO
+    csv_file.write(s.getvalue().encode())  # extract csv-string, convert it to bytes and write to buffer
+    csv_file.seek(0)
+
+    return csv_file
+
+
 
 
