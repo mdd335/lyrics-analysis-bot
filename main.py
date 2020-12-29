@@ -1,10 +1,9 @@
+from analysis_creator import Analysis_creator
+
 import logging
 from typing import Dict
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
-
-import lyricsanalyzer
-
 
 # Enable logging
 logging.basicConfig(
@@ -17,7 +16,7 @@ artists = []
 keywords = []
 years = []
 
-ARTIST, KEYWORD, YEARSTART, YEAREND, ANALYSIS = range(5)
+ARTIST, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(5)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -36,7 +35,7 @@ def artist_chosen(update: Update, context: CallbackContext) -> int:
     artists.append(artist)
     update.message.reply_text(f'Please choose the year in which the time span should start, e.g. 2010.')
 
-    return YEARSTART
+    return YEAR_START
 
 
 def yearstart_chosen(update: Update, context: CallbackContext) -> int:
@@ -46,9 +45,9 @@ def yearstart_chosen(update: Update, context: CallbackContext) -> int:
             years.append(int(yearstart))
             update.message.reply_text(f'I will start with year {yearstart}.')
             update.message.reply_text(f'Next, please choose the year in which the time span should end.')
-            return YEAREND
+            return YEAR_END
     update.message.reply_text(f'Please enter a year between 1900 and 2030.')
-    return YEARSTART
+    return YEAR_START
 
 
 def yearend_chosen(update: Update, context: CallbackContext) -> int:
@@ -60,7 +59,7 @@ def yearend_chosen(update: Update, context: CallbackContext) -> int:
             update.message.reply_text(f'Next, please choose the first keyword to analyze.')
             return KEYWORD
     update.message.reply_text(f'Please enter a year between {str(years[0])} and 2030.')
-    return YEAREND
+    return YEAR_END
 
 
 def keyword_chosen(update: Update, context: CallbackContext) -> int:
@@ -74,7 +73,8 @@ def keyword_chosen(update: Update, context: CallbackContext) -> int:
 
 def analysis_started(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while.')
-    csv_file, example_string = lyricsanalyzer.analyze_artist(artists[0], keywords, range(years[0], (years[1] + 1)))
+    my_analysis_creator = Analysis_creator()
+    csv_file, example_string = my_analysis_creator.analyze_artist(artists[0], keywords, range(years[0], (years[1] + 1)))
     update.message.reply_text(f'Here is the data as a csv file:')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
@@ -99,10 +99,10 @@ def main() -> None:
             ARTIST: [
                 MessageHandler(Filters.text, artist_chosen)
             ],
-            YEARSTART: [
+            YEAR_START: [
                 MessageHandler(Filters.text, yearstart_chosen)
             ],
-            YEAREND: [
+            YEAR_END: [
                 MessageHandler(Filters.text, yearend_chosen)
             ],
             KEYWORD: [

@@ -1,0 +1,15 @@
+diagramme
+/info befehl
+requests schneller machen
+song-arrays abspeichern, um nicht jedes mal laden zu müssen
+artist überprüfen bevor weiter gemacht wird
+mehrere methoden:
+    artist - jahresunabhängig
+    keyword - nach jahren
+    keyword - jahresunabhängig
+
+
+album release year als alternative
+mehrere keywords als eins
+mehrere artists als einer
+liste der berücksichtigten songs in tabelle schreiben

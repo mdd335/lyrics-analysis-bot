@@ -55,7 +55,7 @@ class Data_analyzer:
         if num_of_songs == 0:
             percentage = 0.0
         else:
-            percentage = (n_with_keyword / num_of_songs) * 100
+            percentage = round(n_with_keyword / num_of_songs * 100, 1)
 
         return percentage, n_with_keyword
 
@@ -73,6 +73,6 @@ class Data_analyzer:
         if len(songs) == 0:
             percentage = 0
         else:
-            percentage = (n_with_keyword / len(songs)) * 100
+            percentage = round(n_with_keyword / len(songs) * 100, 1)
 
         return percentage, n_with_keyword

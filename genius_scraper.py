@@ -1,7 +1,8 @@
+from song import Song
+
 from bs4 import BeautifulSoup
 import requests
 import re
-from song import Song
 
 
 class Genius_scraper:
