@@ -25,14 +25,30 @@ def start(update: Update, context: CallbackContext) -> int:
     years.clear()
     update.message.reply_text("Hi! I am the LyricsBot.")
     update.message.reply_text("If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
-    update.message.reply_text("First, please tell me the artist. Type the name exactly as it is written at genius.com")
+    update.message.reply_text("Type /info for more detailed info. Type /start at any time to start from the beginning.")
+    update.message.reply_text("First, please tell me the artist. Spell the name exactly as it is spelled on genius.com")
 
     return ARTIST
+
+
+def info(update: Update, context: CallbackContext) -> int:
+    update.message.reply_text("Info")
+    update.message.reply_text("Info")
+    update.message.reply_text("Info")
+    if artists == []:
+        update.message.reply_text("Type in an artist to start. Spell the name exactly as it is spelled on genius.com")
+        return ARTIST
+    else:
+        update.message.reply_text(f'Type /start anytime to start over.')
+        return ConversationHandler.END
 
 
 def artist_chosen(update: Update, context: CallbackContext) -> int:
     artist = update.message.text
     artists.append(artist)
+    if artist == "Money Boy":
+        update.message.reply_text(f'Gute Wahl Mois')
+    update.message.reply_text(f'I will analyze {artist}.')
     update.message.reply_text(f'Please choose the year in which the time span should start, e.g. 2010.')
 
     return YEAR_START
@@ -53,7 +69,7 @@ def yearstart_chosen(update: Update, context: CallbackContext) -> int:
 def yearend_chosen(update: Update, context: CallbackContext) -> int:
     yearend = update.message.text
     if yearend.isnumeric():
-        if len(yearend) == 4 and years[0] < int(yearend) < 2031:
+        if len(yearend) == 4 and years[0] <= int(yearend) < 2031:
             years.append(int(yearend))
             update.message.reply_text(f'I will analyze the years between {str(years[0])} and {yearend}.')
             update.message.reply_text(f'Next, please choose the first keyword to analyze.')
@@ -94,21 +110,30 @@ def main() -> None:
 
     # Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[
+            CommandHandler('start', start),
+            CommandHandler('info', info)
+        ],
         states={
             ARTIST: [
+                CommandHandler('start', start),
+                CommandHandler('info', info),
                 MessageHandler(Filters.text, artist_chosen)
             ],
             YEAR_START: [
+                CommandHandler('start', start),
                 MessageHandler(Filters.text, yearstart_chosen)
             ],
             YEAR_END: [
+                CommandHandler('start', start),
                 MessageHandler(Filters.text, yearend_chosen)
             ],
             KEYWORD: [
+                CommandHandler('start', start),
                 MessageHandler(Filters.text, keyword_chosen)
             ],
             ANALYSIS: [
+                CommandHandler('start', start),
                 CommandHandler('analyze', analysis_started),
                 MessageHandler(Filters.text, keyword_chosen)
             ]
