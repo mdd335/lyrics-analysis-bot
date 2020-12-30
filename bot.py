@@ -5,7 +5,9 @@ import logging
 from typing import Dict
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
+from telegram.ext.dispatcher import run_async
 import os
+
 
 PORT = int(os.environ.get('PORT', 5000))
 
@@ -21,6 +23,8 @@ ARTIST, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(5)
 # TODO: Needs garbage collection if bot lives for a long time
 request_dictionary = {}
 
+# TODO: Add methods: artist - all time, keyword - by years, keyword - all time
+
 
 def start(update: Update, context: CallbackContext) -> int:
     new_user_request = User_request(update.message.chat.id)
@@ -29,11 +33,13 @@ def start(update: Update, context: CallbackContext) -> int:
     update.message.reply_text("If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
     update.message.reply_text("Type /info for more detailed info. Type /start at any time to start from the beginning.")
     update.message.reply_text("First, please tell me the artist. Spell the name exactly as it is spelled on genius.com")
+    # TODO: several artists as one (AKAs)
 
     return ARTIST
 
 
 def info(update: Update, context: CallbackContext) -> int:
+    # TODO: Add info
     update.message.reply_text("Info")
     update.message.reply_text("Info")
     update.message.reply_text("Info")
@@ -47,6 +53,7 @@ def info(update: Update, context: CallbackContext) -> int:
 
 def artist_chosen(update: Update, context: CallbackContext) -> int:
     artist = update.message.text
+    # TODO: check if right artist
     request_dictionary[update.message.chat.id].artist = artist
     if artist == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois')
@@ -64,19 +71,20 @@ def yearstart_chosen(update: Update, context: CallbackContext) -> int:
             update.message.reply_text(f'I will start with year {year_start}.')
             update.message.reply_text(f'Next, please choose the year in which the time span should end.')
             return YEAR_END
-    update.message.reply_text(f'Please enter a year between 1900 and 2030.')
+    update.message.reply_text(f'Please enter a start year between 1900 and 2030.')
     return YEAR_START
 
 
 def yearend_chosen(update: Update, context: CallbackContext) -> int:
     year_end = update.message.text
     if year_end.isnumeric():
-        if len(year_end) == 4 and request_dictionary[update.message.chat.id].year_start <= int(year_end) < 2031:
+        if len(year_end) == 4 and int(request_dictionary[update.message.chat.id].year_start) <= int(year_end) < 2031:
             request_dictionary[update.message.chat.id].year_end = year_end
-            update.message.reply_text(f'I will analyze the years between {str(request_dictionary[update.message.chat.id].year_start)} and {year_end}.')
+            update.message.reply_text(f'I will analyze the years between {request_dictionary[update.message.chat.id].year_start} and {year_end}.')
             update.message.reply_text(f'Next, please choose the first keyword to analyze.')
+            # TODO: several keywords as one (synonyms)
             return KEYWORD
-    update.message.reply_text(f'Please enter a year between {str(request_dictionary[update.message.chat.id].year_start)} and 2030.')
+    update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and 2030.')
     return YEAR_END
 
 
@@ -89,16 +97,20 @@ def keyword_chosen(update: Update, context: CallbackContext) -> int:
     return ANALYSIS
 
 
+@run_async
 def analysis_started(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while.')
+
     my_analysis_creator = Analysis_creator()
-    csv_file, example_string = my_analysis_creator.analyze_artist(request_dictionary[update.message.chat.id].artist, request_dictionary[update.message.chat.id].keywords, range(request_dictionary[update.message.chat.id].year_start, (request_dictionary[update.message.chat.id].year_end + 1)))
+    year_range = range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1)
+    csv_file, example_string = my_analysis_creator.analyze_artist(request_dictionary[update.message.chat.id].artist, request_dictionary[update.message.chat.id].keywords, year_range)
+
     update.message.reply_text(f'Here is the data as a csv file:')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
     update.message.reply_text(f'Thank you. Type /start anytime to start over.')
-
     # TODO: Remove user request from map
+
     return ConversationHandler.END
 
 
@@ -146,11 +158,12 @@ def main() -> None:
 
     dispatcher.add_handler(conv_handler)
 
-    # Start the Bot
-    updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path="***REMOVED_TELEGRAM_BOT_TOKEN***")
-    updater.bot.setWebhook('https://murmuring-stream-73575.herokuapp.com/' + "***REMOVED_TELEGRAM_BOT_TOKEN***")
+    # Start the Bot with Heroku backend
+    # updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path="***REMOVED_TELEGRAM_BOT_TOKEN***")
+    # updater.bot.setWebhook('https://murmuring-stream-73575.herokuapp.com/' + "***REMOVED_TELEGRAM_BOT_TOKEN***")
+
+    # Start the Bot with local backend
+    updater.start_polling()
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

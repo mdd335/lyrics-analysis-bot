@@ -48,6 +48,8 @@ class Genius_scraper:
                     if song.lyrics is not None:
                         song_list_only_songs_with_year.append(song)
 
+        # TODO: Save song lists for future use
+
         return song_list_only_songs_with_year
 
     def get_json(self, path, params=None, headers=None):
@@ -146,6 +148,8 @@ class Genius_scraper:
 
         else:
             release_date = release_date_element.next_sibling.next_sibling.get_text()
+
+        # TODO: use album release year alternatively
 
         if release_date_element is not None:
 

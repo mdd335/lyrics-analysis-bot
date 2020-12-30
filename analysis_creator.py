@@ -59,6 +59,7 @@ class Analysis_creator:
         list_for_csv = [list(data_list[0].keys())]
         for year in data_list:
             list_for_csv.append(list(year.values()))
+        # TODO: Write list of titles of used songs in csv
 
         # Make CSV
         s = io.StringIO()  # csv module can write data in io.StringIO buffer only
@@ -67,5 +68,7 @@ class Analysis_creator:
         csv_file = io.BytesIO()  # python-telegram-bot library can send files only from io.BytesIO buffer, so we need to convert StringIO to BytesIO
         csv_file.write(s.getvalue().encode())  # extract csv-string, convert it to bytes and write to buffer
         csv_file.seek(0)
+
+        # TODO: Diagrams
 
         return csv_file
