@@ -3,6 +3,8 @@ from song import Song
 from bs4 import BeautifulSoup
 import requests
 import re
+import asyncio
+import aiohttp
 
 
 class Genius_scraper:
@@ -22,51 +24,36 @@ class Genius_scraper:
     def get_song_list(self, artist, year_list):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
         artist_id = self.get_artist_id(artist)
+        song_return_objects = self.get_songs_by_artist(artist_id)
 
-        # Get songs as main artist
-        songs = self.get_song_ids(artist_id)
-        songs_ids = [song["id"] for song in songs if song["primary_artist"]["id"] == artist_id]
-        print("Found " + str(len(songs_ids)) + " songs as main artist")
+        # Filter: only songs as main artist
+        song_return_objects_main_artist = [song for song in song_return_objects if song["primary_artist"]["id"] == artist_id]
+        print("Found " + str(len(song_return_objects_main_artist)) + " songs as main artist")
+        print()
 
+        # Create url list from song return objects
+        url_list = []
+        for song in song_return_objects_main_artist:
+            url = "http://genius.com" + song["path"]
+            url_list.append(url)
+
+        # Create html list from url list
+        html_list = self.get_html_list_aio(url_list)
+
+        # Get song data, add song objects to new list if year and lyrics found
         song_list = []
-        for song in songs:
-            if song["primary_artist"]["id"] == artist_id:
-                song_list.append(Song(song["id"]))
-
-        # Get song data, remove songs without year
-        # songs_data_list = [geniusscrape.retrieve_lyrics(song_id) for song_id in songs_ids]
-
-        song_list_only_songs_with_year = []
-
-        for song in song_list:
-            html = self.get_song_html(song.id)
-            song.set_title(self.get_song_title(html))
+        for html in html_list:
+            title = self.get_song_title(html)
+            song = Song(title)
             song.set_year(self.get_song_year(html))
+
             if song.year is not None:
                 if song.year in year_list:
                     song.set_lyrics(self.get_song_lyrics(html))
                     if song.lyrics is not None:
-                        song_list_only_songs_with_year.append(song)
+                        song_list.append(song)
 
-        # TODO: Save song lists for future use
-
-        return song_list_only_songs_with_year
-
-    def get_json(self, path, params=None, headers=None):
-        """Send request and get response in json format."""
-
-        # Generate request URL
-        requrl = '/'.join([self.base, path])
-        token = "Bearer {}".format(self.apidict['clientaccesstoken'])
-        if headers:
-            headers['Authorization'] = token
-        else:
-            headers = {"Authorization": token}
-
-        # Get response object from querying genius api
-        response = requests.get(url=requrl, params=params, headers=headers)
-        response.raise_for_status()
-        return response.json()
+        return song_list
 
     def get_artist_id(self, artist_name):
         """Gets the id of an artist from Genius."""
@@ -77,7 +64,7 @@ class Genius_scraper:
         print("Artist ID is: {}".format(artist_id))
         return artist_id
 
-    def get_song_ids(self, artist_id):
+    def get_songs_by_artist(self, artist_id):
         """Get all the song ids from an artist."""
         current_page = 1
         next_page = True
@@ -95,9 +82,6 @@ class Genius_scraper:
                 # Increment current_page value for next loop
                 current_page += 1
                 print("Page {} finished scraping".format(current_page))
-                # If you don't wanna wait too long to scrape, un-comment this
-                # if current_page == 2:
-                #    break
 
             else:
                 # If page_songs is empty, quit
@@ -108,19 +92,30 @@ class Genius_scraper:
 
         return songs
 
-    def get_song_html(self, song_id):
-        """Gets the html of a song via request and cleans it with Beautiful Soup"""
-        path = self.connect_lyrics(song_id)
-        URL = "http://genius.com" + path
-        page = requests.get(URL)
+    def get_html_list_aio(self, url_list):
+        html_list = []
 
-        print()
-        print(URL)
+        async def get(url):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url=url) as response:
+                    resp = await response.read()
+                    html_list.append(BeautifulSoup(resp, "html.parser"))
+                    print(f'Downloaded html of {url}')
 
-        # Extract the page's HTML as a string
-        html = BeautifulSoup(page.text, "html.parser")
+        async def main(urls):
+            ret = await asyncio.gather(*[get(url) for url in urls])
 
-        return html
+        asyncio.run(main(url_list))
+        return html_list
+
+    def get_html_list(self, url_list):
+        html_list = []
+
+        for url in url_list:
+            page = requests.get(url)
+            html_list.append(page.text)
+
+        return html_list
 
     def get_song_title(self, html):
         """Extracts the song title from an html"""
@@ -129,9 +124,11 @@ class Genius_scraper:
             # print("(Title is not in h1 with class header_with_cover_art-primary_info-title)")
             song_title = html.find('h1', class_=re.compile(r'^SongHeader__Title'))
         if song_title is None:
+            print()
             print("No title found")
         else:
             song_title_string = song_title.get_text()
+            print()
             print("Found title: {}".format(song_title_string))
         return song_title_string
 
@@ -182,16 +179,6 @@ class Genius_scraper:
                 print("Found lyrics")
                 return self.clean_lyrics(song_lyrics_string)
 
-    def connect_lyrics(self, song_id):
-        """Constructs the path of song lyrics."""
-        url = "songs/{}".format(song_id)
-        data = self.get_json(url)
-
-        # Gets the path of song lyrics
-        path = data['response']['song']['path']
-
-        return path
-
     def clean_lyrics(self, lyrics):
         """Clean lyrics from punctuation, new lines, etc."""
 
@@ -226,3 +213,19 @@ class Genius_scraper:
         lyrics_formated = lyrics_formated.lower()
 
         return lyrics_formated
+
+    def get_json(self, path, params=None, headers=None):
+        """Send request and get response in json format."""
+
+        # Generate request URL
+        requrl = '/'.join([self.base, path])
+        token = "Bearer {}".format(self.apidict['clientaccesstoken'])
+        if headers:
+            headers['Authorization'] = token
+        else:
+            headers = {"Authorization": token}
+
+        # Get response object from querying genius api
+        response = requests.get(url=requrl, params=params, headers=headers)
+        response.raise_for_status()
+        return response.json()

@@ -1,8 +1,7 @@
 class Song:
 
-    def __init__(self, id):
-        self.id = id
-        self.title = ""
+    def __init__(self, title):
+        self.title = title
 
     def set_title(self, title):
         self.title = title
@@ -12,9 +11,6 @@ class Song:
 
     def set_lyrics(self, lyrics):
         self.lyrics = lyrics
-
-    def get_id(self):
-        return self.id
 
     def get_title(self):
         return self.title
