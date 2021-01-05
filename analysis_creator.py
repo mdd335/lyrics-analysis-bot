@@ -11,33 +11,47 @@ class Analysis_creator:
     def __init__(self):
         self.test = "test"
 
-    def analyze_artist(self, artist, keywords, years):
+    def analyze_artist(self, artist, artist_songs_list, keywords, year_range):
 
-        # Get songs from Genius
-        my_genius_scraper = Genius_scraper()
-        songs = my_genius_scraper.get_song_list(artist, years)
-        print()
-        print("Found year and lyrics of " + str(len(songs)) + " songs in year range:")
+        # Check whether song list has to be scraped
+        if artist_songs_list is None:
+            # Get songs from Genius
+            my_genius_scraper = Genius_scraper()
+            artist_songs_list = my_genius_scraper.get_artist_songs_list(artist)
+            print()
+            print("Found lyrics of " + str(len(artist_songs_list)) + " songs by artist:")
+        else:
+            # Take songs from artist_dictionary
+            print()
+            print("Song list taken from artist_dictionary")
+
+        # Make list of song titles
         song_titles = []
-        for song in songs:
+        for song in artist_songs_list:
             song_titles.append(song.title)
         print(song_titles)
 
+        # Filter: Only songs with year in year range
+        artist_songs_list_filtered = []
+        for song in artist_songs_list:
+            if song.year in year_range:
+                artist_songs_list_filtered.append(song)
+
         # Get data analysis - percentages by year
         my_data_analyzer = Data_analyzer()
-        data_list = my_data_analyzer.one_artist_several_keywords(songs, years, keywords)
+        data_list = my_data_analyzer.one_artist_several_keywords(artist_songs_list_filtered, year_range, keywords)
         print("Percentages:")
         print(data_list)
 
         # Make example sentence
-        example_string = f'Example: In {years[0]} , {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {data_list[0].get("% containing " + keywords[0])} %.'
+        example_string = f'Example: In {year_range[0]}, {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {data_list[0].get("% containing " + keywords[0])} %.'
 
         # Make and name CSV file
         csv_file = self.make_csv(data_list)
         keywords_string = ' '.join([elem for elem in keywords])
-        csv_file.name = f'Lyrics analysis {artist} {str(years[0])} - {str(years[-1])} {keywords_string}.csv'
+        csv_file.name = f'Lyrics analysis {artist} {str(year_range[0])} - {str(year_range[-1])} {keywords_string}.csv'
 
-        return csv_file, example_string
+        return csv_file, example_string, artist_songs_list
 
         ''' # Make and print table
         data_for_table = []

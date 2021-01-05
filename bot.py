@@ -20,15 +20,14 @@ logger = logging.getLogger(__name__)
 
 ARTIST, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(5)
 
-# TODO: Needs garbage collection if bot lives for a long time
 request_dictionary = {}
+artist_dictionary = {}
 
 # TODO: Add methods: artist - all time, keyword - by years, keyword - all time
 
 
 def start(update: Update, context: CallbackContext) -> int:
-    new_user_request = User_request(update.message.chat.id)
-    request_dictionary[update.message.chat.id] = new_user_request
+    request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     update.message.reply_text("Hi! I am the LyricsBot.")
     update.message.reply_text("If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
     update.message.reply_text("Type /info for more detailed info. Type /start at any time to start from the beginning.")
@@ -101,15 +100,30 @@ def keyword_chosen(update: Update, context: CallbackContext) -> int:
 def analysis_started(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while.')
 
-    my_analysis_creator = Analysis_creator()
+    # Prepare and send request at Analysis Creator
+    artist = request_dictionary[update.message.chat.id].artist
+    if artist in artist_dictionary.keys():
+        artist_songs_list = artist_dictionary[artist]
+    else:
+        artist_songs_list = None
+    keywords = request_dictionary[update.message.chat.id].keywords
     year_range = range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1)
-    csv_file, example_string = my_analysis_creator.analyze_artist(request_dictionary[update.message.chat.id].artist, request_dictionary[update.message.chat.id].keywords, year_range)
+    my_analysis_creator = Analysis_creator()
+    csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist, artist_songs_list, keywords, year_range)
 
+    # Store artist song list in artist dictionary
+    if artist not in artist_dictionary.keys():
+        artist_dictionary[artist] = artist_songs_list_new
+
+    # Send output to user
     update.message.reply_text(f'Here is the data as a csv file:')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
     update.message.reply_text(f'Thank you. Type /start anytime to start over.')
-    # TODO: Remove user request from map
+
+    # Clean artist dictionary and remove request from request dictionary
+    clean_artist_dictionary()
+    del request_dictionary[update.message.chat.id]
 
     return ConversationHandler.END
 
@@ -173,3 +187,8 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
+def clean_artist_dictionary():
+    if len(artist_dictionary) > 1000:
+        artist_dictionary.clear()

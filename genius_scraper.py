@@ -21,7 +21,7 @@ class Genius_scraper:
 
         self.base = "https://api.genius.com"
 
-    def get_song_list(self, artist, year_list):
+    def get_artist_songs_list(self, artist):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
         artist_id = self.get_artist_id(artist)
         song_return_objects = self.get_songs_by_artist(artist_id)
@@ -41,19 +41,19 @@ class Genius_scraper:
         html_list = self.get_html_list_aio(url_list)
 
         # Get song data, add song objects to new list if year and lyrics found
-        song_list = []
+        artist_songs_list = []
         for html in html_list:
             title = self.get_song_title(html)
             song = Song(title)
             song.set_year(self.get_song_year(html))
+            if song.year is None:
+                song.set_year("unknown")
+            song.set_lyrics(self.get_song_lyrics(html))
 
-            if song.year is not None:
-                if song.year in year_list:
-                    song.set_lyrics(self.get_song_lyrics(html))
-                    if song.lyrics is not None:
-                        song_list.append(song)
+            if song.lyrics is not None:
+                artist_songs_list.append(song)
 
-        return song_list
+        return artist_songs_list
 
     def get_artist_id(self, artist_name):
         """Gets the id of an artist from Genius."""
