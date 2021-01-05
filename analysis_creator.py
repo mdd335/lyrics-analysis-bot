@@ -23,7 +23,7 @@ class Analysis_creator:
         else:
             # Take songs from artist_dictionary
             print()
-            print("Song list taken from artist_dictionary")
+            print("Song list of " + str(len(artist_songs_list)) + " Songs taken from artist_dictionary:")
 
         # Make list of song titles
         song_titles = []
@@ -31,15 +31,9 @@ class Analysis_creator:
             song_titles.append(song.title)
         print(song_titles)
 
-        # Filter: Only songs with year in year range
-        artist_songs_list_filtered = []
-        for song in artist_songs_list:
-            if song.year in year_range:
-                artist_songs_list_filtered.append(song)
-
         # Get data analysis - percentages by year
         my_data_analyzer = Data_analyzer()
-        data_list = my_data_analyzer.one_artist_several_keywords(artist_songs_list_filtered, year_range, keywords)
+        data_list = my_data_analyzer.one_artist_several_keywords(artist_songs_list, year_range, keywords)
         print("Percentages:")
         print(data_list)
 
@@ -50,6 +44,8 @@ class Analysis_creator:
         csv_file = self.make_csv(data_list)
         keywords_string = ' '.join([elem for elem in keywords])
         csv_file.name = f'Lyrics analysis {artist} {str(year_range[0])} - {str(year_range[-1])} {keywords_string}.csv'
+
+        # TODO: Diagrams
 
         return csv_file, example_string, artist_songs_list
 
@@ -82,7 +78,5 @@ class Analysis_creator:
         csv_file = io.BytesIO()  # python-telegram-bot library can send files only from io.BytesIO buffer, so we need to convert StringIO to BytesIO
         csv_file.write(s.getvalue().encode())  # extract csv-string, convert it to bytes and write to buffer
         csv_file.seek(0)
-
-        # TODO: Diagrams
 
         return csv_file

@@ -12,6 +12,9 @@ class Song:
     def set_lyrics(self, lyrics):
         self.lyrics = lyrics
 
+    def set_keywords(self, keywords):
+        self.keywords = keywords
+
     def get_title(self):
         return self.title
 
@@ -20,3 +23,6 @@ class Song:
 
     def get_lyrics(self):
         return self.lyrics
+
+    def get_keywords(self):
+        return self.keywords

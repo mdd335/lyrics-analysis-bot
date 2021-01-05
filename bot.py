@@ -27,6 +27,7 @@ artist_dictionary = {}
 
 
 def start(update: Update, context: CallbackContext) -> int:
+    clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     update.message.reply_text("Hi! I am the LyricsBot.")
     update.message.reply_text("If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
@@ -42,12 +43,9 @@ def info(update: Update, context: CallbackContext) -> int:
     update.message.reply_text("Info")
     update.message.reply_text("Info")
     update.message.reply_text("Info")
-    if request_dictionary[update.message.chat.id].artist is None:
-        update.message.reply_text("Type in an artist to start. Spell the name exactly as it is spelled on genius.com")
-        return ARTIST
-    else:
-        update.message.reply_text(f'Type /start anytime to start over.')
-        return ConversationHandler.END
+    update.message.reply_text(f'Type /start anytime to start.')
+
+    return ConversationHandler.END
 
 
 def artist_chosen(update: Update, context: CallbackContext) -> int:
@@ -107,7 +105,7 @@ def analysis_started(update: Update, context: CallbackContext) -> int:
     else:
         artist_songs_list = None
     keywords = request_dictionary[update.message.chat.id].keywords
-    year_range = range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1)
+    year_range = list(range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1))
     my_analysis_creator = Analysis_creator()
     csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist, artist_songs_list, keywords, year_range)
 
@@ -116,13 +114,14 @@ def analysis_started(update: Update, context: CallbackContext) -> int:
         artist_dictionary[artist] = artist_songs_list_new
 
     # Send output to user
-    update.message.reply_text(f'Here is the data as a csv file:')
+    update.message.reply_text(f'Here is the data as a csv file (can be opened in Excel or Numbers:')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
-    update.message.reply_text(f'Thank you. Type /start anytime to start over.')
+    update.message.reply_text(f'Thank you. Type /info for more detailed info on how the data was created. Type /start anytime to start over.')
+    print("Analysis finished, output sent")
+    print()
 
-    # Clean artist dictionary and remove request from request dictionary
-    clean_artist_dictionary()
+    # Remove request from request dictionary
     del request_dictionary[update.message.chat.id]
 
     return ConversationHandler.END
@@ -185,10 +184,16 @@ def main() -> None:
     updater.idle()
 
 
+def clean_dictionaries():
+    if len(artist_dictionary) > 1000:
+        artist_dictionary.clear()
+
+    if len(request_dictionary) > 1000:
+        request_dictionary.clear()
+
+
 if __name__ == '__main__':
     main()
 
 
-def clean_artist_dictionary():
-    if len(artist_dictionary) > 1000:
-        artist_dictionary.clear()
+

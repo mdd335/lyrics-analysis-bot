@@ -39,6 +39,7 @@ class Genius_scraper:
 
         # Create html list from url list
         html_list = self.get_html_list_aio(url_list)
+        # html_list = self.get_html_list(url_list)
 
         # Get song data, add song objects to new list if year and lyrics found
         artist_songs_list = []
@@ -47,7 +48,7 @@ class Genius_scraper:
             song = Song(title)
             song.set_year(self.get_song_year(html))
             if song.year is None:
-                song.set_year("unknown")
+                song.set_year("unknown year")
             song.set_lyrics(self.get_song_lyrics(html))
 
             if song.lyrics is not None:
@@ -113,7 +114,8 @@ class Genius_scraper:
 
         for url in url_list:
             page = requests.get(url)
-            html_list.append(page.text)
+            html_list.append(BeautifulSoup(page.text, "html.parser"))
+            print(f'Downloaded html of {url}')
 
         return html_list
 
@@ -173,6 +175,7 @@ class Genius_scraper:
         else:
             song_lyrics_string = song_lyrics.get_text(" ")
             if song_lyrics_string is None:
+                # TODO: return None if lyrics are unrealistically short
                 print("No lyrics found")
                 return None
             else:
