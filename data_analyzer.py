@@ -12,23 +12,24 @@ class Data_analyzer:
 
         # Analyze each year in year range
         for year in year_range:
-            year_object = self.analyze_year_one_artist(artist_songs_list, keywords, year)
-            data_list.append(year_object)
+            songs_list_year = [song for song in artist_songs_list if song.year == year]
+            data_list.append(self.make_data_row_oa(songs_list_year, keywords, year))
 
         # Analyze whole year range
-        year_range_object = self.analyze_year_range_one_artist(artist_songs_list, keywords, year_range)
-        data_list.append(year_range_object)
+        songs_list_whole_year_range = [song for song in artist_songs_list if song.year in year_range]
+        title = str(year_range[0]) + "-" + str(year_range[-1]) + " total"
+        data_list.append(self.make_data_row_oa(songs_list_whole_year_range, keywords, title))
 
         # Analyze songs with year outside of year range
-        other_years_object = self.analyze_other_known_years_one_artist(artist_songs_list, keywords, year_range)
-        data_list.append(other_years_object)
+        songs_list_outside_year_range = [song for song in artist_songs_list if song.year != "unknown year" and song.year not in year_range]
+        data_list.append(self.make_data_row_oa(songs_list_outside_year_range, keywords, "other known year"))
 
         # Analyze songs with unknown year
-        unknown_year_object = self.analyze_songs_with_unknown_year_one_artist(artist_songs_list, keywords)
-        data_list.append(unknown_year_object)
+        songs_list_unknown_year = [song for song in artist_songs_list if song.year == "unknown year"]
+        data_list.append(self.make_data_row_oa(songs_list_unknown_year, keywords, "unknown year"))
 
         # Analyze all songs (total)
-        total_object = self.make_data_row(artist_songs_list, keywords, "total")
+        total_object = self.make_data_row_oa(artist_songs_list, keywords, "total")
         data_list.append(total_object)
 
         return data_list
@@ -43,40 +44,7 @@ class Data_analyzer:
                 if keyword not in song.keywords.keys():
                     song.keywords[keyword] = (song.lyrics.find(keyword) != -1)
 
-    def analyze_year_one_artist(self, artist_songs_list, keywords, year):
-        songs_list_year = []
-        for song in artist_songs_list:
-            if song.year == year:
-                songs_list_year.append(song)
-        year_object = self.make_data_row(songs_list_year, keywords, year)
-        return year_object
-
-    def analyze_year_range_one_artist(self, artist_songs_list, keywords, year_range):
-        songs_list_whole_year_range = []
-        for song in artist_songs_list:
-            if song.year in year_range:
-                songs_list_whole_year_range.append(song)
-        title = str(year_range[0]) + "-" + str(year_range[-1]) + " total"
-        year_range_object = self.make_data_row(songs_list_whole_year_range, keywords, title)
-        return year_range_object
-
-    def analyze_other_known_years_one_artist(self, artist_songs_list, keywords, year_range):
-        songs_list_outside_year_range = []
-        for song in artist_songs_list:
-            if song.year != "unknown year" and song.year not in year_range:
-                songs_list_outside_year_range.append(song)
-        other_years_object = self.make_data_row(songs_list_outside_year_range, keywords, "other known year")
-        return other_years_object
-
-    def analyze_songs_with_unknown_year_one_artist(self, artist_songs_list, keywords):
-        songs_list_unknown_year = []
-        for song in artist_songs_list:
-            if song.year == "unknown year":
-                songs_list_unknown_year.append(song)
-        unknown_year_object = self.make_data_row(songs_list_unknown_year, keywords, "unknown year")
-        return unknown_year_object
-
-    def make_data_row(self, songs_list, keywords, title):
+    def make_data_row_oa(self, songs_list, keywords, title):
 
         row_object = {"Year": title}
 

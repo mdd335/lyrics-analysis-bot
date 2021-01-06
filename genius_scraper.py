@@ -37,9 +37,26 @@ class Genius_scraper:
             url = "http://genius.com" + song["path"]
             url_list.append(url)
 
+
+        '''
+        url_list = ["https://genius.com/Antilopen-gang-messer-skit-lyrics",
+                    "https://genius.com/Antilopen-gang-army-parka-lyrics",
+                    "https://genius.com/Antilopen-gang-wurfel-skit-lyrics",
+                    "https://genius.com/Money-boy-dom-perignon-lyrics",
+                    "https://genius.com/Money-boy-noch-eine-pill-lyrics"]
+        '''
+
         # Create html list from url list
         html_list = self.get_html_list_aio(url_list)
         # html_list = self.get_html_list(url_list)
+
+        # for num, html in enumerate(html_list, start=1):
+        #     with open(f"output{num}.html", "w") as file:
+        #         file.write(str(html))
+
+
+
+
 
         # Get song data, add song objects to new list if year and lyrics found
         artist_songs_list = []
@@ -72,22 +89,25 @@ class Genius_scraper:
         songs = [] # to store final song ids
 
         while next_page:
-            path = "artists/{}/songs/".format(artist_id)
-            params = {'page': current_page} # the current page
-            data = self.get_json(path=path, params=params) # get json of songs
+            try:
+                path = "artists/{}/songs/".format(artist_id)
+                params = {'page': current_page} # the current page
+                data = self.get_json(path=path, params=params) # get json of songs
 
-            page_songs = data['response']['songs']
-            if page_songs:
-                # Add all the songs of current page
-                songs += page_songs
-                # Increment current_page value for next loop
-                current_page += 1
-                print("Page {} finished scraping".format(current_page))
+                page_songs = data['response']['songs']
+                if page_songs:
+                    # Add all the songs of current page
+                    songs += page_songs
+                    # Increment current_page value for next loop
+                    current_page += 1
+                    print("Page {} finished scraping".format(current_page))
 
-            else:
-                # If page_songs is empty, quit
-                next_page = False
-                print("All pages finished scraping")
+                else:
+                    # If page_songs is empty, quit
+                    next_page = False
+                    print("All pages finished scraping")
+            except:
+                print("Error scraping page {}".format(current_page))
 
         print("Found " + str(len(songs)) + " songs")
 
@@ -99,9 +119,12 @@ class Genius_scraper:
         async def get(url):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url=url) as response:
-                    resp = await response.read()
-                    html_list.append(BeautifulSoup(resp, "html.parser"))
-                    print(f'Downloaded html of {url}')
+                    try:
+                        resp = await response.read()
+                        html_list.append(BeautifulSoup(resp, "html.parser"))
+                        print(f'Downloaded html of {url}')
+                    except:
+                        print(f'Error downloading html of {url}')
 
         async def main(urls):
             ret = await asyncio.gather(*[get(url) for url in urls])
@@ -135,20 +158,57 @@ class Genius_scraper:
         return song_title_string
 
     def get_song_year(self, html):
+        try:
+            # Try to find release date in span
+            release_date_element = html.find("span", string="Release Date")
+            release_date = release_date_element.next_sibling.next_sibling.get_text()
+            release_year = int(release_date[-4:])
+
+        except:
+            try:
+                # Try to find in p
+                release_date_element = html.find("p", string="Release Date")
+                release_date = release_date_element.next_sibling
+                release_year = int(release_date[-4:])
+
+            except:
+                try:
+                    # No release date found, so look for album release year
+                    album_release_year_element = html.find("span", class_="song_album-info-release_year")
+                    release_date = album_release_year_element.get_text()
+                    release_year = int(release_date[-5:-1])
+
+                except:
+                    try:
+                        release_date_element = html.select("a[class^=PrimaryAlbum__Title]")
+                        release_year = release_date_element[0].get_text()[-5:-1]
+                    except:
+                        # TODO: make year finder even better
+                        print("No year found")
+                        return None
+
+        if release_year is not None:
+            try:
+                release_year_int = int(release_year)
+                if 1600 < release_year_int < 2100:
+                    print(f"Found year: {release_year}")
+                    return release_year_int
+            except:
+                print("No year found")
+                return None
+
+    def get_song_year_alt(self, html):
         """Extracts the release year from an html"""
 
         release_date_element = html.find("span", string="Release Date")
 
         if release_date_element is None:
             release_date_element = html.find("p", string="Release Date")
-
             if release_date_element is not None:
                 release_date = release_date_element.next_sibling
 
         else:
             release_date = release_date_element.next_sibling.next_sibling.get_text()
-
-        # TODO: use album release year alternatively
 
         if release_date_element is not None:
 
@@ -159,6 +219,8 @@ class Genius_scraper:
                 if release_year > 1799 and release_year < 2100:
                     print("Found year: {}".format(release_year))
                     return release_year
+
+        # TODO: use album release year alternatively
 
         print("No year found")
         return None
