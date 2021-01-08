@@ -41,8 +41,8 @@ class Genius_scraper:
                 print("Error while getting url from one song object")
 
         # Create html list from url list
-        # html_list = self.get_html_list_aio(url_list)
-        html_list = self.get_html_list(url_list)
+        html_list = self.get_html_list_aio(url_list)
+        # html_list = self.get_html_list(url_list)
 
         # Get song data, add song objects to new list if lyrics found
         artist_songs_list = []

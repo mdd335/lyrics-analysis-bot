@@ -38,7 +38,7 @@ class Analysis_creator:
         print(data_list)
 
         # Make example sentence
-        example_string = f'Example: In {year_range[0]}, {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {data_list[0].get("% containing " + keywords[0])} %.'
+        example_string = f'Example: In {year_range[0]}, {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {round(data_list[0].get("% containing " + keywords[0]))} %.'
 
         # Make IMG file
         img_file = self.make_img(artist, keywords, data_list)
@@ -55,7 +55,10 @@ class Analysis_creator:
         # Create plot
         fig, ax = plt.subplots()
 
-        # Make lists for x- and y-axis data point positions
+        # Grid
+        plt.grid(b=None, which='major', axis='y')
+
+        # Graph lines
         for keyword in keywords:
 
             # x-axis
@@ -74,20 +77,20 @@ class Analysis_creator:
                 if yearstr != "other known year" and yearstr != "unknown year" and "total" not in yearstr:
                     y.append(year["% containing " + keyword])
 
-            ax.plot(x, y, label=keyword)
+            ax.plot(x, y, label=keyword, marker=".")
 
             # Make data point annotations
             for i, txt in enumerate(y):
-                ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 0), textcoords='offset pixels', color='dimgray', fontsize=7)
+                ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 0), textcoords='offset pixels', color='dimgray', fontsize=6)
 
         # Title
-        plt.title(f'% of {artist} songs that contain different keywords, per year')
+        plt.title(f'% of {artist} songs that contain different keywords, per year', pad=15)
 
         # Text in corner
-        ax.text(1, -0.13, 'source: lyrics on genius.com - made with t.me/lyricsbot',
-                verticalalignment='bottom', horizontalalignment='right',
+        ax.text(0.5, -0.14, 'source: lyrics on genius.com - made with t.me/lyricsbot',
+                verticalalignment='bottom', horizontalalignment='center',
                 transform=ax.transAxes,
-                color='dimgray', fontsize=7)
+                color='dimgray', fontsize=6)
 
         # X-axis annotations (n =)
         x_locs, x_labels = plt.xticks()
@@ -105,7 +108,7 @@ class Analysis_creator:
         # Make file
         img_file = io.BytesIO()
         img_file.name = 'image.jpeg'
-        plt.savefig(img_file, format='JPEG')
+        plt.savefig(img_file, format='JPEG', dpi=200)
         img_file.seek(0)
 
         return img_file

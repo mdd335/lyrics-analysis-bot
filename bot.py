@@ -29,8 +29,7 @@ artist_dictionary = {}
 def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
-    update.message.reply_text("Hi! I am the LyricsBot.")
-    update.message.reply_text("If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
+    update.message.reply_text("Hey, I am the LyricsBot. If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
     update.message.reply_text("Type /info for more detailed info. Type /start at any time to start from the beginning.")
     update.message.reply_text("First, please tell me the artist. Spell the name exactly as it is spelled on genius.com")
     # TODO: several artists as one (AKAs)
