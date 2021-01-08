@@ -23,7 +23,7 @@ ARTIST, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(5)
 request_dictionary = {}
 artist_dictionary = {}
 
-# TODO: Add methods: artist - all time, keyword - by years, keyword - all time
+# TODO: Add method: one keyword, several artists
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -88,7 +88,7 @@ def yearend_chosen(update: Update, context: CallbackContext) -> int:
 def keyword_chosen(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text
     request_dictionary[update.message.chat.id].keywords.append(keyword)
-    update.message.reply_text(f'You selected the artist "{request_dictionary[update.message.chat.id].artist}", the time span {request_dictionary[update.message.chat.id].year_start} to {request_dictionary[update.message.chat.id].year_end} and keyword(s) {str(request_dictionary[update.message.chat.id].keywords)}.')
+    update.message.reply_text(f'You selected artist {request_dictionary[update.message.chat.id].artist}, time span {request_dictionary[update.message.chat.id].year_start} to {request_dictionary[update.message.chat.id].year_end} and keyword(s) {str(request_dictionary[update.message.chat.id].keywords)}.')
     update.message.reply_text(f'Add another keyword or type /analyze to start Analysis')
 
     return ANALYSIS
@@ -107,17 +107,18 @@ def analysis_started(update: Update, context: CallbackContext) -> int:
     keywords = request_dictionary[update.message.chat.id].keywords
     year_range = list(range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1))
     my_analysis_creator = Analysis_creator()
-    csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist, artist_songs_list, keywords, year_range)
+    img_file, csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist, artist_songs_list, keywords, year_range)
 
     # Store artist song list in artist dictionary
     if artist not in artist_dictionary.keys():
         artist_dictionary[artist] = artist_songs_list_new
 
     # Send output to user
-    update.message.reply_text(f'Here is the data as a csv file (can be opened in Excel or Numbers:')
+    context.bot.send_photo(chat_id=update.message.chat_id, photo=img_file)
+    update.message.reply_text(f'Here is the data as a csv file (can be opened in Excel or similar apps):')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
-    update.message.reply_text(f'Thank you. Type /info for more detailed info on how the data was created. Type /start anytime to start over.')
+    update.message.reply_text(f'Type /info for more detailed info on how the data was created. Type /start anytime to start over.')
     print("Analysis finished, output sent")
     print()
 

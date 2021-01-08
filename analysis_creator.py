@@ -1,7 +1,7 @@
 from data_analyzer import Data_analyzer
 from genius_scraper import Genius_scraper
 
-from tabulate import tabulate
+import matplotlib.pyplot as plt
 import csv
 import io
 
@@ -40,28 +40,75 @@ class Analysis_creator:
         # Make example sentence
         example_string = f'Example: In {year_range[0]}, {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist} contained the word {keywords[0]}. That is {data_list[0].get("% containing " + keywords[0])} %.'
 
+        # Make IMG file
+        img_file = self.make_img(artist, keywords, data_list)
+
         # Make and name CSV file
         csv_file = self.make_csv(data_list)
         keywords_string = ' '.join([elem for elem in keywords])
         csv_file.name = f'Lyrics analysis {artist} {str(year_range[0])} - {str(year_range[-1])} {keywords_string}.csv'
 
-        # TODO: Diagrams
+        return img_file, csv_file, example_string, artist_songs_list
 
-        return csv_file, example_string, artist_songs_list
+    def make_img(self, artist, keywords, data_list):
 
-        ''' # Make and print table
-        data_for_table = []
-        for year in data_list:
-            year_data = {"Year": year.get("Year"), "n total": year.get("n total")}
-            for keyword in year.get("Keyword data"):
-                keyword_string = keyword.get("Keyword")
-                year_data["% containing " + keyword_string] = keyword.get("%")
-                year_data["n containing " + keyword_string] = keyword.get("n")
-            data_for_table.append(year_data)
-        output = tabulate(data_for_table, headers="keys")
-        print(output)
-        print("Example: In " + str(data_list[0].get("Year")) + ", " + str(data_list[0].get("Keyword data")[0].get("n")) + " of the " + str(data_list[0].get("n total")) + " songs by " + artist + " contain the word " + keywords[0] + ". That is " + str(data_list[0].get("Keyword data")[0].get("%")) + " %.")
-        '''
+        # Create plot
+        fig, ax = plt.subplots()
+
+        # Make lists for x- and y-axis data point positions
+        for keyword in keywords:
+
+            # x-axis
+            x = []
+            x_n =[]
+            for year in data_list:
+                yearstr = str(year["Year"])
+                if yearstr != "other known year" and yearstr != "unknown year" and "total" not in yearstr:
+                    x_n.append(year["n total"])
+                    x.append(yearstr)
+
+            # y-axis
+            y = []
+            for year in data_list:
+                yearstr = str(year["Year"])
+                if yearstr != "other known year" and yearstr != "unknown year" and "total" not in yearstr:
+                    y.append(year["% containing " + keyword])
+
+            ax.plot(x, y, label=keyword)
+
+            # Make data point annotations
+            for i, txt in enumerate(y):
+                ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 0), textcoords='offset pixels', color='dimgray', fontsize=7)
+
+        # Title
+        plt.title(f'% of {artist} songs that contain different keywords, per year')
+
+        # Text in corner
+        ax.text(1, -0.13, 'source: lyrics on genius.com - made with t.me/lyricsbot',
+                verticalalignment='bottom', horizontalalignment='right',
+                transform=ax.transAxes,
+                color='dimgray', fontsize=7)
+
+        # X-axis annotations (n =)
+        x_locs, x_labels = plt.xticks()
+        xticks_new = [str(year) + "\nn=" + str(x_n[i]) for i, year in enumerate(x)]
+        plt.xticks(x_locs, xticks_new)
+
+        # Y-axis annotations (%)
+        y_locs, y_labels = plt.yticks()
+        yticks_new = [str(int(loc)) + "%" for loc in list(y_locs)[1:-1]]
+        plt.yticks(y_locs[1:-1], yticks_new)
+
+        # Legend
+        ax.legend()
+
+        # Make file
+        img_file = io.BytesIO()
+        img_file.name = 'image.jpeg'
+        plt.savefig(img_file, format='JPEG')
+        img_file.seek(0)
+
+        return img_file
 
     def make_csv(self, data_list):
 

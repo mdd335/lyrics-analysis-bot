@@ -34,40 +34,23 @@ class Genius_scraper:
         # Create url list from song return objects
         url_list = []
         for song in song_return_objects_main_artist:
-            url = "http://genius.com" + song["path"]
-            url_list.append(url)
-
-
-        '''
-        url_list = ["https://genius.com/Antilopen-gang-messer-skit-lyrics",
-                    "https://genius.com/Antilopen-gang-army-parka-lyrics",
-                    "https://genius.com/Antilopen-gang-wurfel-skit-lyrics",
-                    "https://genius.com/Money-boy-dom-perignon-lyrics",
-                    "https://genius.com/Money-boy-noch-eine-pill-lyrics"]
-        '''
+            try:
+                url = "http://genius.com" + song["path"]
+                url_list.append(url)
+            except:
+                print("Error while getting url from one song object")
 
         # Create html list from url list
-        html_list = self.get_html_list_aio(url_list)
-        # html_list = self.get_html_list(url_list)
+        # html_list = self.get_html_list_aio(url_list)
+        html_list = self.get_html_list(url_list)
 
-        # for num, html in enumerate(html_list, start=1):
-        #     with open(f"output{num}.html", "w") as file:
-        #         file.write(str(html))
-
-
-
-
-
-        # Get song data, add song objects to new list if year and lyrics found
+        # Get song data, add song objects to new list if lyrics found
         artist_songs_list = []
         for html in html_list:
             title = self.get_song_title(html)
             song = Song(title)
             song.set_year(self.get_song_year(html))
-            if song.year is None:
-                song.set_year("unknown year")
             song.set_lyrics(self.get_song_lyrics(html))
-
             if song.lyrics is not None:
                 artist_songs_list.append(song)
 
@@ -185,7 +168,7 @@ class Genius_scraper:
                     except:
                         # TODO: make year finder even better
                         print("No year found")
-                        return None
+                        return "unknown year"
 
         if release_year is not None:
             try:
@@ -195,54 +178,31 @@ class Genius_scraper:
                     return release_year_int
             except:
                 print("No year found")
-                return None
-
-    def get_song_year_alt(self, html):
-        """Extracts the release year from an html"""
-
-        release_date_element = html.find("span", string="Release Date")
-
-        if release_date_element is None:
-            release_date_element = html.find("p", string="Release Date")
-            if release_date_element is not None:
-                release_date = release_date_element.next_sibling
-
-        else:
-            release_date = release_date_element.next_sibling.next_sibling.get_text()
-
-        if release_date_element is not None:
-
-            if release_date is not None:
-
-                release_year = int(release_date[-4:])
-
-                if release_year > 1799 and release_year < 2100:
-                    print("Found year: {}".format(release_year))
-                    return release_year
-
-        # TODO: use album release year alternatively
-
-        print("No year found")
-        return None
+                return "unknown year"
 
     def get_song_lyrics(self, html):
         """Extracts the lyrics from an html"""
+
         song_lyrics = html.find("div", class_="lyrics")
         if song_lyrics is None:
-            # print("(Lyrics are not in div with class lyrics)")
             song_lyrics = html.find('div', class_=re.compile(r'^Lyrics__Container'))
+
         if song_lyrics is None:
             print("No lyrics found")
             return None
-        else:
-            song_lyrics_string = song_lyrics.get_text(" ")
-            if song_lyrics_string is None:
-                # TODO: return None if lyrics are unrealistically short
-                print("No lyrics found")
-                return None
-            else:
-                print("Found lyrics")
-                return self.clean_lyrics(song_lyrics_string)
+
+        song_lyrics_string = song_lyrics.get_text(" ")
+
+        if song_lyrics_string is None:
+            print("No lyrics found")
+            return None
+
+        if len(song_lyrics_string) < 20:
+            print("Unrealistically short lyrics found")
+            return None
+
+        print("Found lyrics")
+        return self.clean_lyrics(song_lyrics_string)
 
     def clean_lyrics(self, lyrics):
         """Clean lyrics from punctuation, new lines, etc."""
