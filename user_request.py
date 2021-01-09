@@ -3,7 +3,9 @@ class User_request:
     def __init__(self, chat_id):
         self.chat_id = chat_id
 
-        self.artist = None
+        self.artist_name = None
+
+        self.artist_id = None
 
         self.year_start = None
 

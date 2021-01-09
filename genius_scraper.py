@@ -21,9 +21,9 @@ class Genius_scraper:
 
         self.base = "https://api.genius.com"
 
-    def get_artist_songs_list(self, artist):
+    def get_artist_songs_list(self, artist_id):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
-        artist_id = self.get_artist_id(artist)
+        # artist_id = self.get_artist_id(artist)
         song_return_objects = self.get_songs_by_artist(artist_id)
 
         # Filter: only songs as main artist
@@ -64,6 +64,16 @@ class Genius_scraper:
         artist_id = data['response']['hits'][0]['result']['primary_artist']['id']
         print("Artist ID is: {}".format(artist_id))
         return artist_id
+
+    def get_artist_name_url_id(self, artist_search_str):
+        """Gets the name, url and id of an artist from Genius."""
+        path ="search"
+        params = {'q' : artist_search_str}
+        data = self.get_json(path = path, params = params)
+        artist_name = data['response']['hits'][0]['result']['primary_artist']['name']
+        artist_url = data['response']['hits'][0]['result']['primary_artist']['url']
+        artist_id = data['response']['hits'][0]['result']['primary_artist']['id']
+        return artist_name, artist_url, artist_id
 
     def get_songs_by_artist(self, artist_id):
         """Get all the song ids from an artist."""

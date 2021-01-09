@@ -1,5 +1,6 @@
 from analysis_creator import Analysis_creator
 from user_request import User_request
+from genius_scraper import Genius_scraper
 
 import logging
 from typing import Dict
@@ -18,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-ARTIST, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(5)
+ARTIST, ARTIST_CONFIRMATION, KEYWORD, YEAR_START, YEAR_END, ANALYSIS = range(6)
 
 request_dictionary = {}
 artist_dictionary = {}
@@ -29,9 +30,8 @@ artist_dictionary = {}
 def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
-    update.message.reply_text("Hey, I am the LyricsBot. If you tell me an artist, a time span and one or more keyword(s), I will tell you the percentage of their songs in each year in the time span that contain the keyword(s).")
-    update.message.reply_text("Type /info for more detailed info. Type /start at any time to start from the beginning.")
-    update.message.reply_text("First, please tell me the artist. Spell the name exactly as it is spelled on genius.com")
+    update.message.reply_text("Hey, I am the LyricsBot. If you tell me an artist, a time span and one or more keywords, I will analyze the artists lyrics on Genius.com and tell you the % of their songs in each year in the time span that contain the keyword(s). Type /info for more detailed info. Type /start at any time to start from the beginning.")
+    update.message.reply_text("First, please tell me the artist you want to analyze.")
     # TODO: several artists as one (AKAs)
 
     return ARTIST
@@ -48,12 +48,21 @@ def info(update: Update, context: CallbackContext) -> int:
 
 
 def artist_chosen(update: Update, context: CallbackContext) -> int:
-    artist = update.message.text
-    # TODO: check if right artist
-    request_dictionary[update.message.chat.id].artist = artist
-    if artist == "Money Boy":
+    artist_search_str = update.message.text
+    my_genius_scraper = Genius_scraper()
+    artist_name, artist_url, artist_id = my_genius_scraper.get_artist_name_url_id(artist_search_str)
+
+    request_dictionary[update.message.chat.id].artist_name = artist_name
+    request_dictionary[update.message.chat.id].artist_id = artist_id
+
+    update.message.reply_text(f'I have found {artist_name} ({artist_url}). If this is the right artist, type /continue. If not, please enter the name again. Try spelling it exactly as it is spelled on Genius.com.', disable_web_page_preview=True)
+
+    return ARTIST_CONFIRMATION
+
+
+def artist_confirmed(update: Update, context: CallbackContext) -> int:
+    if request_dictionary[update.message.chat.id].artist_name == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois')
-    update.message.reply_text(f'I will analyze {artist}.')
     update.message.reply_text(f'Please choose the year in which the time span should start, e.g. 2010.')
 
     return YEAR_START
@@ -64,8 +73,8 @@ def yearstart_chosen(update: Update, context: CallbackContext) -> int:
     if year_start.isnumeric():
         if len(year_start) == 4 and 1799 < int(year_start) < 2031:
             request_dictionary[update.message.chat.id].year_start = year_start
-            update.message.reply_text(f'I will start with year {year_start}.')
-            update.message.reply_text(f'Next, please choose the year in which the time span should end.')
+            # update.message.reply_text(f'I will start with year {year_start}.')
+            update.message.reply_text(f'Next, please choose the year in which the time span should end, e.g. 2020.')
             return YEAR_END
     update.message.reply_text(f'Please enter a start year between 1900 and 2030.')
     return YEAR_START
@@ -76,8 +85,8 @@ def yearend_chosen(update: Update, context: CallbackContext) -> int:
     if year_end.isnumeric():
         if len(year_end) == 4 and int(request_dictionary[update.message.chat.id].year_start) <= int(year_end) < 2031:
             request_dictionary[update.message.chat.id].year_end = year_end
-            update.message.reply_text(f'I will analyze the years between {request_dictionary[update.message.chat.id].year_start} and {year_end}.')
-            update.message.reply_text(f'Next, please choose the first keyword to analyze.')
+            update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}.')
+            update.message.reply_text(f'Next, please choose the first keyword to analyze. Keywords are not case sensitive.')
             # TODO: several keywords as one (synonyms)
             return KEYWORD
     update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and 2030.')
@@ -85,38 +94,40 @@ def yearend_chosen(update: Update, context: CallbackContext) -> int:
 
 
 def keyword_chosen(update: Update, context: CallbackContext) -> int:
-    keyword = update.message.text
+    keyword = update.message.text.lower()
     request_dictionary[update.message.chat.id].keywords.append(keyword)
-    update.message.reply_text(f'You selected artist {request_dictionary[update.message.chat.id].artist}, time span {request_dictionary[update.message.chat.id].year_start} to {request_dictionary[update.message.chat.id].year_end} and keyword(s) {str(request_dictionary[update.message.chat.id].keywords)}.')
-    update.message.reply_text(f'Add another keyword or type /analyze to start Analysis')
+    keywords_string = ', '.join([elem for elem in request_dictionary[update.message.chat.id].keywords])
+    # update.message.reply_text(f'You selected artist {request_dictionary[update.message.chat.id].artist_name}, time span {request_dictionary[update.message.chat.id].year_start} to {request_dictionary[update.message.chat.id].year_end} and keyword(s) {str(request_dictionary[update.message.chat.id].keywords)}.')
+    update.message.reply_text(f'You selected keyword(s) {keywords_string}. Add another keyword or type /analyze to start Analysis.')
 
     return ANALYSIS
 
 
 @run_async
 def analysis_started(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text(f'Analysis started. This might take a while.')
+    update.message.reply_text(f'Analysis started. This might take up to a few minutes.')
 
     # Prepare and send request at Analysis Creator
-    artist = request_dictionary[update.message.chat.id].artist
-    if artist in artist_dictionary.keys():
-        artist_songs_list = artist_dictionary[artist]
+    artist_name = request_dictionary[update.message.chat.id].artist_name
+    artist_id = request_dictionary[update.message.chat.id].artist_id
+    if artist_name in artist_dictionary.keys():
+        artist_songs_list = artist_dictionary[artist_name]
     else:
         artist_songs_list = None
     keywords = request_dictionary[update.message.chat.id].keywords
     year_range = list(range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1))
     my_analysis_creator = Analysis_creator()
-    img_file, csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist, artist_songs_list, keywords, year_range)
+    img_file, csv_file, example_string, artist_songs_list_new = my_analysis_creator.analyze_artist(artist_name, artist_id, artist_songs_list, keywords, year_range)
 
     # Store artist song list in artist dictionary
-    if artist not in artist_dictionary.keys():
-        artist_dictionary[artist] = artist_songs_list_new
+    if artist_name not in artist_dictionary.keys():
+        artist_dictionary[artist_name] = artist_songs_list_new
 
     # Send output to user
     context.bot.send_photo(chat_id=update.message.chat_id, photo=img_file)
-    update.message.reply_text(f'Here is the data as a csv file (can be opened in Excel or similar apps):')
-    context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(example_string)
+    update.message.reply_text(f'Here is the more detailed data as a csv file (can be opened in Excel or similar apps):')
+    context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
     update.message.reply_text(f'Type /info for more detailed info on how the data was created. Type /start anytime to start over.')
     print("Analysis finished, output sent")
     print()
@@ -146,6 +157,11 @@ def main() -> None:
             ARTIST: [
                 CommandHandler('start', start),
                 CommandHandler('info', info),
+                MessageHandler(Filters.text, artist_chosen)
+            ],
+            ARTIST_CONFIRMATION: [
+                CommandHandler('start', start),
+                CommandHandler('continue', artist_confirmed),
                 MessageHandler(Filters.text, artist_chosen)
             ],
             YEAR_START: [
