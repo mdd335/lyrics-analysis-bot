@@ -5,6 +5,7 @@ import requests
 import re
 import asyncio
 import aiohttp
+import random
 
 
 class Genius_scraper:
@@ -23,7 +24,7 @@ class Genius_scraper:
 
     def get_artist_songs_list(self, artist_id):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
-        # artist_id = self.get_artist_id(artist)
+
         song_return_objects = self.get_songs_by_artist(artist_id)
 
         # Filter: only songs as main artist
@@ -31,18 +32,11 @@ class Genius_scraper:
         print("Found " + str(len(song_return_objects_main_artist)) + " songs as main artist")
         print()
 
-        # Create url list from song return objects
-        url_list = []
-        for song in song_return_objects_main_artist:
-            try:
-                url = "http://genius.com" + song["path"]
-                url_list.append(url)
-            except:
-                print("Error while getting url from one song object")
+        # Make url list from song return objects
+        url_list = ["http://genius.com" + song["path"] for song in song_return_objects_main_artist]
 
-        # Create html list from url list
-        html_list = self.get_html_list_aio(url_list)
-        # html_list = self.get_html_list(url_list)
+        # Make html list from url list
+        html_list = self.make_html_list(url_list)
 
         # Get song data, add song objects to new list if lyrics found
         artist_songs_list = []
@@ -55,15 +49,6 @@ class Genius_scraper:
                 artist_songs_list.append(song)
 
         return artist_songs_list
-
-    def get_artist_id(self, artist_name):
-        """Gets the id of an artist from Genius."""
-        path ="search"
-        params = {'q' : artist_name}
-        data = self.get_json(path = path, params = params)
-        artist_id = data['response']['hits'][0]['result']['primary_artist']['id']
-        print("Artist ID is: {}".format(artist_id))
-        return artist_id
 
     def get_artist_name_url_id(self, artist_search_str):
         """Gets the name, url and id of an artist from Genius."""
@@ -106,18 +91,57 @@ class Genius_scraper:
 
         return songs
 
-    def get_html_list_aio(self, url_list):
+    def make_html_list(self, url_list):
+
+        # If there are more than 900 songs in the URL list, choose random sample of 900
+        if len(url_list) > 900:
+            print("More than 900 songs, so taking random sample of 900.")
+            url_list = random.sample(url_list, 900)
+
+        # Create html list from url list,
+        # splitting it up if more than 300 songs, because for some reasons aiohttp struggles with bigger lists
+        if len(url_list) > 600:
+            html_list_1 = self.get_htmls_aio(url_list[:299])
+            html_list_2 = self.get_htmls_aio(url_list[300:599])
+            html_list_3 = self.get_htmls_aio(url_list[600:])
+            html_list = html_list_1 + html_list_2 + html_list_3
+        elif len(url_list) > 300:
+            html_list_1 = self.get_htmls_aio(url_list[:299])
+            html_list_2 = self.get_htmls_aio(url_list[300:])
+            html_list = html_list_1 + html_list_2
+        else:
+            html_list = self.get_htmls_aio(url_list)
+
+        '''
+                try:
+                    html_list = self.get_html_list_aio(url_list)
+                except:
+                    print("Error while getting HTMLs async. Trying classic Requests.")
+                    try:
+                        html_list = self.get_html_list(url_list)
+                    except:
+                        print("Error while getting HTMLs with classic Requests. Returning Error")
+                        return "ERROR"
+                '''
+
+        print()
+        print(f"Successfully downloaded {len(html_list)} of {len(url_list)} HTMLs")
+        print()
+
+        return html_list
+
+    def get_htmls_aio(self, url_list):
         html_list = []
 
         async def get(url):
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url=url) as response:
-                    try:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url=url) as response:
                         resp = await response.read()
                         html_list.append(BeautifulSoup(resp, "html.parser"))
                         print(f'Downloaded html of {url}')
-                    except:
-                        print(f'Error downloading html of {url}')
+            except:
+                print(f'Error downloading html of {url}')
 
         async def main(urls):
             ret = await asyncio.gather(*[get(url) for url in urls])
@@ -125,7 +149,7 @@ class Genius_scraper:
         asyncio.run(main(url_list))
         return html_list
 
-    def get_html_list(self, url_list):
+    def get_htmls(self, url_list):
         html_list = []
 
         for url in url_list:
@@ -142,12 +166,10 @@ class Genius_scraper:
             # print("(Title is not in h1 with class header_with_cover_art-primary_info-title)")
             song_title = html.find('h1', class_=re.compile(r'^SongHeader__Title'))
         if song_title is None:
-            print()
-            print("No title found")
+            print("No title found, ", end='')
         else:
             song_title_string = song_title.get_text()
-            print()
-            print("Found title: {}".format(song_title_string))
+            print("Found title: {}, ".format(song_title_string), end='')
         return song_title_string
 
     def get_song_year(self, html):
@@ -177,17 +199,17 @@ class Genius_scraper:
                         release_year = release_date_element[0].get_text()[-5:-1]
                     except:
                         # TODO: make year finder even better
-                        print("No year found")
+                        print("No year found, ", end='')
                         return "unknown year"
 
         if release_year is not None:
             try:
                 release_year_int = int(release_year)
                 if 1600 < release_year_int < 2100:
-                    print(f"Found year: {release_year}")
+                    print(f"Found year: {release_year}, ", end='')
                     return release_year_int
             except:
-                print("No year found")
+                print("No year found, ", end='')
                 return "unknown year"
 
     def get_song_lyrics(self, html):

@@ -2,7 +2,7 @@ from data_analyzer import Data_analyzer
 from genius_scraper import Genius_scraper
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import MaxNLocator
 import csv
 import io
 
@@ -35,11 +35,21 @@ class Analysis_creator:
         # Get data analysis - percentages by year
         my_data_analyzer = Data_analyzer()
         data_list = my_data_analyzer.one_artist_several_keywords(artist_songs_list, year_range, keywords)
-        print("Percentages:")
+        if isinstance(data_list, str):
+            # "Error" was returned by data analyzer
+            return "Error", None, None, None
+        print("Percentages (data_list):")
         print(data_list)
 
-        # Make example sentence
-        example_string = f'Example: In {year_range[0]}, {str(data_list[0].get("n containing " + keywords[0]))} of the {data_list[0].get("n total")} songs by {artist_name} contained the word {keywords[0]}. That is {round(data_list[0].get("% containing " + keywords[0]))} %.'
+        # Make info string
+        info_string = ""
+        years_without_lyrics_str = [str(data_row["Year"]) for data_row in data_list if isinstance(data_row["Year"], int) and data_row["n total"] == 0]
+        if len(years_without_lyrics_str) > 0:
+            info_string += f"No lyrics found for {', '.join(years_without_lyrics_str)}.\n"
+        for data_row in data_list:
+            if data_row["n total"] != 0:
+                info_string += f'Example: In {data_row["Year"]}, {data_row["n containing " + keywords[0]]} of the {data_row["n total"]} songs by {artist_name} contained the term "{keywords[0]}". That is {round(data_row["% containing " + keywords[0]])} %.'
+                break
 
         # Make IMG file
         img_file = self.make_img(artist_name, keywords, data_list)
@@ -49,11 +59,11 @@ class Analysis_creator:
         keywords_string = ' '.join([elem for elem in keywords])
         csv_file.name = f'Lyrics analysis {artist_name} {str(year_range[0])} - {str(year_range[-1])} {keywords_string}.csv'
 
-        return img_file, csv_file, example_string, artist_songs_list
+        return img_file, csv_file, info_string, artist_songs_list
 
     def make_img(self, artist, keywords, data_list):
 
-        data_list_only_years = [data_row for data_row in data_list if self.check_if_data_row_is_actual_year(data_row)]
+        data_list_only_years = [data_row for data_row in data_list if isinstance(data_row["Year"], int)]
 
         # Create plot
         fig, ax = plt.subplots()
@@ -67,8 +77,9 @@ class Analysis_creator:
             x = []
             y = []
             for data_row in data_list_only_years:
-                x.append(data_row["Year"])
-                y.append(data_row["% containing " + keyword])
+                if data_row["n total"] != 0:
+                    x.append(data_row["Year"])
+                    y.append(data_row["% containing " + keyword])
 
             ax.plot(x, y, label=keyword, marker=".")
 
@@ -79,9 +90,9 @@ class Analysis_creator:
 
         # Title
         if len(keywords) > 1:
-            plt.title(f'% of {artist} songs that contain different keywords in their lyrics, per year', pad=15)
+            plt.title(f'% of {artist} songs with different keywords in their lyrics, per year', pad=15)
         else:
-            plt.title(f'% of {artist} songs that contain "{keywords[0]}" in their lyrics, per year', pad=15)
+            plt.title(f'% of {artist} songs with "{keywords[0]}" in their lyrics, per year', pad=15)
 
         # Bottom text
         ax.text(0.5, -0.135, 'source: lyrics on Genius.com - made with t.me/lyricsbot',
@@ -89,18 +100,19 @@ class Analysis_creator:
                 transform=ax.transAxes,
                 color='dimgray', fontsize=6)
 
-        # X-axis labels should not be decimal numbers (2005.5)
-        ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        # X-axis labels should not be decimal numbers (2010.5)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
         # X-axis label annotations (n =)
-        if len(data_list_only_years) < 10:
-            try:
+        try:
+            if len(data_list_only_years) < 10:
+                x_years = [data_row["Year"] for data_row in data_list_only_years]
                 x_n = [data_row["n total"] for data_row in data_list_only_years]
                 x_locs, x_labels = plt.xticks()
-                xticks_new = [str(year) + "\nn=" + str(x_n[i]) for i, year in enumerate(x)]
+                xticks_new = [str(year) + "\nn=" + str(x_n[i]) for i, year in enumerate(x_years)]
                 plt.xticks(x_locs[1:-1], xticks_new)
-            except:
-                print("Error while trying to add n= to X-axis labels")
+        except:
+            print("Error while trying to add n= to X-axis labels")
 
         # Y-axis label annotations (%)
         try:
@@ -139,11 +151,3 @@ class Analysis_creator:
         csv_file.seek(0)
 
         return csv_file
-
-    def check_if_data_row_is_actual_year(self, data_row):
-        if str(data_row["Year"]) != "other known year":
-            if str(data_row["Year"]) != "unknown year":
-                if "total" not in str(data_row["Year"]):
-                    return True
-
-        return False
