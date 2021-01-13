@@ -5,8 +5,6 @@ class User_request:
 
         self.method = None
 
-        self.artist = None
-
         self.artist_draft = None
 
         self.artists = []
@@ -16,6 +14,4 @@ class User_request:
         self.year_end = None
 
         self.keywords = []
-
-        self.keyword = None
 

@@ -25,6 +25,8 @@ class Genius_scraper:
     def get_artist_songs_list(self, artist_id, artist_name):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
 
+        print(f'Scraping {artist_name}')
+
         song_return_objects = self.get_songs_by_artist(artist_id)
 
         # Filter: only songs as main artist
@@ -114,7 +116,6 @@ class Genius_scraper:
 
         # TODO: Try again if less than 80 % of HTMLs successfully downloaded
 
-        print()
         print(f"Successfully downloaded {len(html_list)} of {len(url_list)} HTMLs")
         print()
 

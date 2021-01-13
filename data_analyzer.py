@@ -81,9 +81,6 @@ class Data_analyzer:
     def add_keyword_to_artist_songs_list(self, artist_songs_list, keyword):
         for song in artist_songs_list:
 
-            if not hasattr(song, 'keywords'):
-                song.keywords = {}
-
             if keyword not in song.keywords.keys():
                 song.keywords[keyword] = (song.lyrics.find(keyword) != -1)
 
@@ -139,8 +136,10 @@ class Data_analyzer:
 
     def get_num_of_songs_with_keyword_in_songs_list(self, keyword, songs_list):
         num_of_songs_with_keyword = 0
+
         for song in songs_list:
             if song.keywords[keyword]:
                 num_of_songs_with_keyword += 1
+
         return num_of_songs_with_keyword
 

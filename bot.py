@@ -27,11 +27,14 @@ METHOD, ARTIST_OA, ARTIST_CONF_OA, YEAR_START_OA, YEAR_END_OA, KEYWORD_OA, ANALY
 request_dictionary = {}
 artist_list = []
 
+# TODO: add profile pictures
+# TODO: several artists as one (AKAs)
+# TODO: several keywords as one (synonyms)
+
 
 def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
-    # TODO: add example pictures to start message
     update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s), keyword(s) and a time span, I will analyze the artists lyrics on Genius.com and create stats about how often they contain the keyword(s). See my profile pictures for examples. Send /info for more detailed info. Send /start at any time to start from the beginning.")
     update.message.reply_text("To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 5 artists).")
 
@@ -39,7 +42,6 @@ def start(update: Update, context: CallbackContext) -> int:
 
 
 def choose_artist_oa(update: Update, context: CallbackContext) -> int:
-    # TODO: several artists as one (AKAs)
     request_dictionary[update.message.chat.id].method = "one_artist"
     update.message.reply_text("First, please tell me the artist you want to analyze.")
     return ARTIST_OA
@@ -59,10 +61,10 @@ def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
 
 
 def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
-    if request_dictionary[update.message.chat.id].artist.name == "Money Boy":
+    if request_dictionary[update.message.chat.id].artist_draft.name == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois')
 
-    request_dictionary[update.message.chat.id].artist = request_dictionary[update.message.chat.id].artist_draft
+    request_dictionary[update.message.chat.id].artists.append(request_dictionary[update.message.chat.id].artist_draft)
 
     update.message.reply_text(f'Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
 
@@ -78,7 +80,7 @@ def choose_year_end_oa(update: Update, context: CallbackContext) -> int:
         return YEAR_START_OA
 
     # Answer
-    request_dictionary[update.message.chat.id].year_start = year_start
+    request_dictionary[update.message.chat.id].year_start = int(year_start)
     update.message.reply_text(f'Next, please choose the year in which the time span should end.')
     return YEAR_END_OA
 
@@ -87,14 +89,13 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
     year_end = update.message.text
 
     # Check if answer is numeric and between start year and 2030, otherwise ask again
-    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) > current_year):
+    if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
         update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OA
 
     # Answer
-    request_dictionary[update.message.chat.id].year_end = year_end
+    request_dictionary[update.message.chat.id].year_end = int(year_end)
     update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first keyword to analyze (no case sensitivity).')
-    # TODO: several keywords as one (synonyms)
     return KEYWORD_OA
 
 
@@ -117,7 +118,6 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
 
 
 def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
-    # TODO: several artists as one (AKAs)
     request_dictionary[update.message.chat.id].method = "one_keyword"
     update.message.reply_text("First, please tell me the keyword you want to analyze (no case sensitivity).")
     return KEYWORD_OK
@@ -125,7 +125,7 @@ def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
 
 def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text.lower()
-    request_dictionary[update.message.chat.id].keyword = keyword
+    request_dictionary[update.message.chat.id].keywords.append(keyword)
     update.message.reply_text(f'I will analyze "{keyword}". Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
 
     return YEAR_START_OK
@@ -140,7 +140,7 @@ def choose_year_end_ok(update: Update, context: CallbackContext) -> int:
         return YEAR_START_OK
 
     # Answer
-    request_dictionary[update.message.chat.id].year_start = year_start
+    request_dictionary[update.message.chat.id].year_start = int(year_start)
     update.message.reply_text(f'Please choose the year in which the time span should end.')
     return YEAR_END_OK
 
@@ -149,12 +149,12 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
     year_end = update.message.text
 
     # Check if answer is numeric and between start year and 2030, otherwise ask again
-    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) > current_year):
+    if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
         update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OK
 
     # Answer
-    request_dictionary[update.message.chat.id].year_end = year_end
+    request_dictionary[update.message.chat.id].year_end = int(year_end)
     update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first artist to analyze.')
     return ARTIST_OK
 
@@ -194,40 +194,22 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
 def get_analysis(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 10 minutes, there was probably an error. Please try again later or try other artists/keywords.)')
 
-    year_range = list(range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1))
-
-    if request_dictionary[update.message.chat.id].method == "one_artist":
-
-        # Prepare request
-        artist_new = request_dictionary[update.message.chat.id].artist
-        keywords = request_dictionary[update.message.chat.id].keywords
+    # Add songs list(s) to artist(s) if they are already in artist list
+    artists = request_dictionary[update.message.chat.id].artists
+    for artist_new in artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is not None:
             artist_new.songs_list = artist_from_list.songs_list
 
-        # Send request and store new artist in artist_list
-        my_analysis_creator = Analysis_creator()
-        img_file, csv_file, info_string, artist_new = my_analysis_creator.create_analysis_oa(artist_new, keywords, year_range)
+    # Send request
+    my_analysis_creator = Analysis_creator()
+    img_file, csv_file, info_string, artists_new = my_analysis_creator.create_analysis(request_dictionary[update.message.chat.id])
+
+    # Store new artists in artist_list
+    for artist_new in artists_new:
+        artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is None:
             artist_list.append(artist_new)
-
-    elif request_dictionary[update.message.chat.id].method == "one_keyword":
-
-        # Prepare request
-        keyword = request_dictionary[update.message.chat.id].keyword
-        artists = request_dictionary[update.message.chat.id].artists
-        for artist_new in artists:
-            artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
-            if artist_from_list is not None:
-                artist_new.songs_list = artist_from_list.songs_list
-
-        # Send request and store new artists in artist_list
-        my_analysis_creator = Analysis_creator()
-        img_file, csv_file, info_string, artists_new = my_analysis_creator.create_analysis_ok(keyword, request_dictionary[update.message.chat.id].artists, year_range)
-        for artist_new in artists_new:
-            artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
-            if artist_from_list is None:
-                artist_list.append(artist_new)
 
     # Send output to user
     context.bot.send_photo(chat_id=update.message.chat_id, photo=img_file)
