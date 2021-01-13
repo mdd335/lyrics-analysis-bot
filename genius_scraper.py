@@ -22,7 +22,7 @@ class Genius_scraper:
 
         self.base = "https://api.genius.com"
 
-    def get_artist_songs_list(self, artist_id):
+    def get_artist_songs_list(self, artist_id, artist_name):
         """Creates and returns a list of song objects with title, year and lyrics for an artist"""
 
         song_return_objects = self.get_songs_by_artist(artist_id)
@@ -42,9 +42,9 @@ class Genius_scraper:
         artist_songs_list = []
         for html in html_list:
             title = self.get_song_title(html)
-            song = Song(title)
-            song.set_year(self.get_song_year(html))
-            song.set_lyrics(self.get_song_lyrics(html))
+            song = Song(artist_name, title)
+            song.year = self.get_song_year(html)
+            song.lyrics = self.get_song_lyrics(html)
             if song.lyrics is not None:
                 artist_songs_list.append(song)
 
@@ -99,7 +99,7 @@ class Genius_scraper:
             url_list = random.sample(url_list, 900)
 
         # Create html list from url list,
-        # splitting it up if more than 300 songs, because for some reasons aiohttp struggles with bigger lists
+        # splitting it up if more than 300 songs, because for some reasons aiohttp seems to struggle with bigger lists
         if len(url_list) > 600:
             html_list_1 = self.get_htmls_aio(url_list[:299])
             html_list_2 = self.get_htmls_aio(url_list[300:599])
@@ -111,18 +111,6 @@ class Genius_scraper:
             html_list = html_list_1 + html_list_2
         else:
             html_list = self.get_htmls_aio(url_list)
-
-        '''
-                try:
-                    html_list = self.get_html_list_aio(url_list)
-                except:
-                    print("Error while getting HTMLs async. Trying classic Requests.")
-                    try:
-                        html_list = self.get_html_list(url_list)
-                    except:
-                        print("Error while getting HTMLs with classic Requests. Returning Error")
-                        return "ERROR"
-                '''
 
         print()
         print(f"Successfully downloaded {len(html_list)} of {len(url_list)} HTMLs")

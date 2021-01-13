@@ -1,8 +1,19 @@
 class Song:
 
-    def __init__(self, title):
+    def __init__(self, artist, title):
+
+        self.artist = artist
+
         self.title = title
 
+        self.year = ""
+
+        self.lyrics = ""
+
+        self.keywords = {}
+
+
+    '''
     def set_title(self, title):
         self.title = title
 
@@ -26,3 +37,5 @@ class Song:
 
     def get_keywords(self):
         return self.keywords
+
+    '''
