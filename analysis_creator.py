@@ -211,9 +211,10 @@ class Analysis_creator:
             ax.plot(x, y, label=keyword_or_artist, marker=".")
 
             # Data point annotations
-            if len(data_list_only_years) < 25:
+            if len(data_list_only_years) < 30:
                 for i, txt in enumerate(y):
-                    ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=6)
+                    if txt != 0.0:
+                        ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=6)
 
         # Title
         if method == "one_artist":
@@ -228,7 +229,7 @@ class Analysis_creator:
                 plt.title(f'% of {keywords_or_artists[0]} songs with "{artist_or_keyword}" in their lyrics, per year', pad=15)
 
         # Bottom text
-        ax.text(0.5, -0.135, 'source: lyrics on Genius.com - made with t.me/lyricsbot',
+        ax.text(0.5, -0.115, 'source: lyrics on Genius.com - make your own lyrics stats with t.me/lyricsbot',
                 verticalalignment='bottom', horizontalalignment='center',
                 transform=ax.transAxes,
                 color='dimgray', fontsize=6)
@@ -236,6 +237,7 @@ class Analysis_creator:
         # X-axis labels should not be decimal numbers (2010.5)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
+        '''
         # X-axis label annotations (n =)
         if method == "one_artist":
             try:
@@ -247,6 +249,7 @@ class Analysis_creator:
                     plt.xticks(x_locs[1:-1], xticks_new)
             except:
                 print("Error while trying to add n= to X-axis labels")
+        '''
 
         # Y-axis label annotations (%)
         try:

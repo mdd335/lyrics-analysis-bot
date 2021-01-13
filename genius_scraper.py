@@ -112,6 +112,8 @@ class Genius_scraper:
         else:
             html_list = self.get_htmls_aio(url_list)
 
+        # TODO: Try again if less than 80 % of HTMLs successfully downloaded
+
         print()
         print(f"Successfully downloaded {len(html_list)} of {len(url_list)} HTMLs")
         print()

@@ -4,6 +4,7 @@ from genius_scraper import Genius_scraper
 from artist import Artist
 
 import logging
+import datetime
 from typing import Dict
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
@@ -19,6 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+current_year = datetime.datetime.now().year
 
 METHOD, ARTIST_OA, ARTIST_CONF_OA, YEAR_START_OA, YEAR_END_OA, KEYWORD_OA, ANALYSIS_OA, KEYWORD_OK, YEAR_START_OK, YEAR_END_OK, ARTIST_OK, ARTIST_CONF_OK, ANALYSIS_OK = range(13)
 
@@ -30,8 +32,8 @@ def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     # TODO: add example pictures to start message
-    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me an artist, a time span and one or more keywords, I will analyze the artists lyrics on Genius.com and tell you about their usage of the keyword(s), like in the image above. Send /info for more detailed info. Send /start at any time to start from the beginning.")
-    update.message.reply_text("To start, please choose a method: send /oneartist to analyze one artist (compare up to 5 keywords) or /onekeyword to analyze one keyword (compare up to 5 artists).")
+    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s), keyword(s) and a time span, I will analyze the artists lyrics on Genius.com and create stats about how often they contain the keyword(s). See my profile pictures for examples. Send /info for more detailed info. Send /start at any time to start from the beginning.")
+    update.message.reply_text("To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 5 artists).")
 
     return METHOD
 
@@ -51,18 +53,18 @@ def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].artist_draft = Artist(artist_name, artist_id)
 
     artist_url = artist_url[artist_url.find('genius'):]
-    update.message.reply_text(f'I have found {artist_name} ({artist_url}). If this is the right artist, send /continue. If not, please enter the name again. Try spelling it exactly as it is spelled on Genius.', disable_web_page_preview=True)
+    update.message.reply_text(f'I found {artist_name} ({artist_url}). Right artist? Send /continue. Wrong? Please enter the name again. Try spelling it as it is spelled on Genius.', disable_web_page_preview=True)
 
     return ARTIST_CONF_OA
 
 
 def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
-    if request_dictionary[update.message.chat.id].artist_name == "Money Boy":
+    if request_dictionary[update.message.chat.id].artist.name == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois')
 
     request_dictionary[update.message.chat.id].artist = request_dictionary[update.message.chat.id].artist_draft
 
-    update.message.reply_text(f'Please choose the year in which the time span should start, e.g. 2010.')
+    update.message.reply_text(f'Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
 
     return YEAR_START_OA
 
@@ -71,13 +73,13 @@ def choose_year_end_oa(update: Update, context: CallbackContext) -> int:
     year_start = update.message.text
 
     # Check if answer is numeric and between 1900 and 2030, otherwise ask again
-    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) >= 2031):
-        update.message.reply_text(f'Please enter a start year between 1900 and 2030.')
+    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
+        update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
         return YEAR_START_OA
 
     # Answer
     request_dictionary[update.message.chat.id].year_start = year_start
-    update.message.reply_text(f'Next, please choose the year in which the time span should end, e.g. 2020.')
+    update.message.reply_text(f'Next, please choose the year in which the time span should end.')
     return YEAR_END_OA
 
 
@@ -85,27 +87,31 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
     year_end = update.message.text
 
     # Check if answer is numeric and between start year and 2030, otherwise ask again
-    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) >= 2031):
-        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and 2030.')
+    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) > current_year):
+        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OA
 
     # Answer
     request_dictionary[update.message.chat.id].year_end = year_end
-    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}.\nNext, please choose the first keyword to analyze (no case sensitivity).')
+    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first keyword to analyze (no case sensitivity).')
     # TODO: several keywords as one (synonyms)
     return KEYWORD_OA
 
 
 def add_keywords_oa(update: Update, context: CallbackContext) -> int:
-    keyword = update.message.text.lower()
-    if len(request_dictionary[update.message.chat.id].keywords) < 5:
-        request_dictionary[update.message.chat.id].keywords.append(keyword)
+    if len(request_dictionary[update.message.chat.id].keywords) < 10:
+        request_dictionary[update.message.chat.id].keywords.append(update.message.text.lower())
 
+    num_of_keywords = len(request_dictionary[update.message.chat.id].keywords)
     keywords_string = ', '.join(['"' + elem + '"' for elem in request_dictionary[update.message.chat.id].keywords])
-    if len(request_dictionary[update.message.chat.id].keywords) < 5:
-        update.message.reply_text(f'Keyword(s): {keywords_string}.\nAdd another keyword or send /analyze to start Analysis.')
+    if num_of_keywords == 1:
+        update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start Analysis.')
+    elif num_of_keywords == 4:
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nFor a good looking graph, I suggest using no more than 4-5 keywords. Add another keyword or send /analyze to start Analysis.')
+    elif num_of_keywords < 10:
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start Analysis.')
     else:
-        update.message.reply_text(f'Keyword(s): {keywords_string}.\nMaximum of 5 keywords reached. Send /analyze to start Analysis.')
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start Analysis.')
 
     return ANALYSIS_OA
 
@@ -113,14 +119,14 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
 def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
     # TODO: several artists as one (AKAs)
     request_dictionary[update.message.chat.id].method = "one_keyword"
-    update.message.reply_text("First, please tell me the keyword you want to analyze.")
+    update.message.reply_text("First, please tell me the keyword you want to analyze (no case sensitivity).")
     return KEYWORD_OK
 
 
 def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text.lower()
     request_dictionary[update.message.chat.id].keyword = keyword
-    update.message.reply_text(f'I will analyze "{keyword}".\nPlease choose the year in which the time span should start, e.g. 2010.')
+    update.message.reply_text(f'I will analyze "{keyword}". Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
 
     return YEAR_START_OK
 
@@ -129,13 +135,13 @@ def choose_year_end_ok(update: Update, context: CallbackContext) -> int:
     year_start = update.message.text
 
     # Check if answer is numeric and between 1900 and 2030, otherwise ask again
-    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) >= 2031):
-        update.message.reply_text(f'Please enter a start year between 1900 and 2030.')
+    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
+        update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
         return YEAR_START_OK
 
     # Answer
     request_dictionary[update.message.chat.id].year_start = year_start
-    update.message.reply_text(f'Next, please choose the year in which the time span should end, e.g. 2020.')
+    update.message.reply_text(f'Please choose the year in which the time span should end.')
     return YEAR_END_OK
 
 
@@ -143,13 +149,13 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
     year_end = update.message.text
 
     # Check if answer is numeric and between start year and 2030, otherwise ask again
-    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) >= 2031):
-        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and 2030.')
+    if not year_end.isnumeric() or (int(request_dictionary[update.message.chat.id].year_start) > int(year_end) or int(year_end) > current_year):
+        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OK
 
     # Answer
     request_dictionary[update.message.chat.id].year_end = year_end
-    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}.\nNext, please choose the first artist to analyze.')
+    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first artist to analyze.')
     return ARTIST_OK
 
 
@@ -161,7 +167,7 @@ def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].artist_draft = Artist(artist_name, artist_id)
 
     artist_url = artist_url[artist_url.find('genius'):]
-    update.message.reply_text(f'I have found {artist_name} ({artist_url}). If this is the right artist, send /continue. If not, please enter the name again. Try spelling it exactly as it is spelled on Genius.', disable_web_page_preview=True)
+    update.message.reply_text(f'I found {artist_name} ({artist_url}). Right artist? Send /continue. Wrong? Please enter the name again. Try spelling it as it is spelled on Genius.', disable_web_page_preview=True)
 
     return ARTIST_CONF_OK
 
@@ -172,18 +178,21 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
             update.message.reply_text(f'Gute Wahl Mois')
         request_dictionary[update.message.chat.id].artists.append(request_dictionary[update.message.chat.id].artist_draft)
 
+    num_of_artists = len(request_dictionary[update.message.chat.id].artists)
     artists_string = ', '.join([artist.name for artist in request_dictionary[update.message.chat.id].artists])
-    if len(request_dictionary[update.message.chat.id].artists) < 5:
-        update.message.reply_text(f'Artist(s): {artists_string}.\nAdd another artist or send /analyze to start Analysis.')
+    if num_of_artists == 1:
+        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start Analysis.')
+    elif num_of_artists < 5:
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start Analysis.')
     else:
-        update.message.reply_text(f'Artist(s): {artists_string}.\nMaximum of 5 artists reached. Send /analyze to start Analysis.')
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 5 artists reached. Send /analyze to start Analysis.')
 
     return ANALYSIS_OK
 
 
 @run_async
 def get_analysis(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 10 minutes, there was probably an error. Please try again later or try other artist/keywords.)')
+    update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 10 minutes, there was probably an error. Please try again later or try other artists/keywords.)')
 
     year_range = list(range(int(request_dictionary[update.message.chat.id].year_start), int(request_dictionary[update.message.chat.id].year_end) + 1))
 

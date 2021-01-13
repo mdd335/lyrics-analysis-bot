@@ -5,9 +5,7 @@ class User_request:
 
         self.method = None
 
-        self.artist_name = None
-
-        self.artist_id = None
+        self.artist = None
 
         self.artist_draft = None
 
