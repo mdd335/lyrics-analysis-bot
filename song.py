@@ -1,10 +1,17 @@
 class Song:
 
-    def __init__(self, artist, title):
+    # def __init__(self, artist, title):
+    def __init__(self, url):
 
-        self.artist = artist
+        self.url = url
 
-        self.title = title
+        self.html = None
+
+        # self.artist = artist
+        self.artist = None
+
+        # self.title = title
+        self.title = None
 
         self.year = None
 

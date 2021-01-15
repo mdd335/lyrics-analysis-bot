@@ -34,7 +34,6 @@ class Analysis_creator:
                 print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary')
                 print()
 
-
         # Get data analysis - percentages by year
         my_data_analyzer = Data_analyzer()
         if request.method == "one_artist":
@@ -98,8 +97,8 @@ class Analysis_creator:
         for keyword_or_artist in keywords_or_artists:
 
             # Plots
-            # TODO: Introduce option to disregard years with n<X
-            x, y = self.make_x_and_y_lists_for_plot(artist_or_keyword, data_list_only_years, keyword_or_artist, method, 1)
+            # TODO: Introduce option to disregard years with n < X
+            x, y = self.make_x_and_y_lists_for_plot(artist_or_keyword, data_list_only_years, keyword_or_artist, method, 5)
             if method == "one_artist":
                 ax.plot(x, y, label=self.make_keyword_str(keyword_or_artist), marker=".")
             elif method == "one_keyword":

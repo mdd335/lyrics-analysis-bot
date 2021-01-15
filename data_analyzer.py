@@ -10,6 +10,16 @@ class Data_analyzer:
         for keyword in keywords:
             self.add_keyword_to_artist_songs_list(artist.songs_list, keyword)
 
+        '''
+        # Print artist_songs_list
+        for song in artist.songs_list:
+            if song.lyrics == None:
+                lyrics_found_str = "NO LYRICS FOUND"
+            else:
+                lyrics_found_str = "lyrics found"
+            print(f'{song.title}, {song.year}, {lyrics_found_str}, {song.url}, {song.keywords["swag"]}')
+        '''
+
         # Create data_list
         data_list = []
 
