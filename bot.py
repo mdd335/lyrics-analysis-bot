@@ -100,19 +100,36 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
 
 
 def add_keywords_oa(update: Update, context: CallbackContext) -> int:
-    if len(request_dictionary[update.message.chat.id].keywords) < 10:
-        request_dictionary[update.message.chat.id].keywords.append(update.message.text.lower())
+    keyword = update.message.text.lower()
 
-    num_of_keywords = len(request_dictionary[update.message.chat.id].keywords)
-    keywords_string = ', '.join(['"' + elem + '"' for elem in request_dictionary[update.message.chat.id].keywords])
-    if num_of_keywords == 1:
-        update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start Analysis.')
-    elif num_of_keywords == 4:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nFor a good looking graph, I suggest using no more than 4-5 keywords. Add another keyword or send /analyze to start Analysis.')
-    elif num_of_keywords < 10:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start Analysis.')
+    # Check spelling and type (OR?) of input. If correct, add to request.keywords
+    if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
+        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        return KEYWORD_OA
+    elif "/" in keyword:
+        if len(request_dictionary[update.message.chat.id].keywords) < 10:
+            request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
     else:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start Analysis.')
+        if len(request_dictionary[update.message.chat.id].keywords) < 10:
+            request_dictionary[update.message.chat.id].keywords.append(keyword)
+
+    # Answer
+    num_of_keywords = len(request_dictionary[update.message.chat.id].keywords)
+    list_for_keywords_string = []
+    for keyword in request_dictionary[update.message.chat.id].keywords:
+        if isinstance(keyword, str):
+            list_for_keywords_string.append('"' + keyword + '"')
+        elif isinstance(keyword, list):
+            list_for_keywords_string.append(' or '.join(['"' + elem + '"' for elem in keyword]))
+    keywords_string = ', '.join(list_for_keywords_string)
+    if num_of_keywords == 1:
+        update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
+    elif num_of_keywords == 4:
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nFor a good looking graph, I suggest using no more than 4-5 keywords. Add another keyword or send /analyze to start analysis.')
+    elif num_of_keywords < 10:
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
+    else:
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start analysis.')
 
     return ANALYSIS_OA
 
@@ -125,8 +142,18 @@ def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
 
 def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text.lower()
-    request_dictionary[update.message.chat.id].keywords.append(keyword)
-    update.message.reply_text(f'I will analyze "{keyword}". Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
+
+    if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
+        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        return KEYWORD_OK
+    elif "/" in keyword:
+        request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
+        keyword_str = '("' + '" or "'.join(keyword.split("/")) + '")'
+    else:
+        request_dictionary[update.message.chat.id].keywords.append(keyword)
+        keyword_str = '"' + keyword + '"'
+
+    update.message.reply_text(f'I will analyze {keyword_str}. Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
 
     return YEAR_START_OK
 
@@ -181,11 +208,11 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
     num_of_artists = len(request_dictionary[update.message.chat.id].artists)
     artists_string = ', '.join([artist.name for artist in request_dictionary[update.message.chat.id].artists])
     if num_of_artists == 1:
-        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start Analysis.')
+        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start analysis.')
     elif num_of_artists < 5:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start Analysis.')
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start analysis.')
     else:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 5 artists reached. Send /analyze to start Analysis.')
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 5 artists reached. Send /analyze to start analysis.')
 
     return ANALYSIS_OK
 
@@ -203,10 +230,10 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
     # Send request
     my_analysis_creator = Analysis_creator()
-    img_file, csv_file, info_string, artists_new = my_analysis_creator.create_analysis(request_dictionary[update.message.chat.id])
+    img_file, csv_file, info_string = my_analysis_creator.create_analysis(request_dictionary[update.message.chat.id])
 
     # Store new artists in artist_list
-    for artist_new in artists_new:
+    for artist_new in artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is None:
             artist_list.append(artist_new)

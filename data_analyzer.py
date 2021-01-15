@@ -38,7 +38,7 @@ class Data_analyzer:
         return data_list
 
     def analyze_data_ok(self, keyword, artists, year_range):
-        """Returns data list of percentages by years for one artist, several keywords"""
+        """Returns data list of percentages by years for one keyword, several artists"""
 
         # Add keyword frequencies to artist_songs_list
         for artist in artists:
@@ -79,10 +79,17 @@ class Data_analyzer:
         return data_list
 
     def add_keyword_to_artist_songs_list(self, artist_songs_list, keyword):
+
         for song in artist_songs_list:
 
-            if keyword not in song.keywords.keys():
-                song.keywords[keyword] = (song.lyrics.find(keyword) != -1)
+            if isinstance(keyword, str):
+                if keyword not in song.keywords.keys():
+                    song.keywords[keyword] = (song.lyrics.find(" " + keyword + " ") != -1)
+
+            elif isinstance(keyword, list):
+                for single_keyword in keyword:
+                    if single_keyword not in song.keywords.keys():
+                        song.keywords[single_keyword] = (song.lyrics.find(" " + single_keyword + " ") != -1)
 
     def make_data_row_oa(self, songs_list, keywords, title):
 
@@ -99,10 +106,11 @@ class Data_analyzer:
 
             # Write % and n
             if num_of_songs_with_keyword == 0:
-                row_object["% with " + keyword] = 0.0
+                row_object["% with " + self.make_keyword_str(keyword)] = 0.0
             else:
-                row_object["% with " + keyword] = round(num_of_songs_with_keyword / num_of_songs * 100, 1)
-            row_object["songs with " + keyword] = num_of_songs_with_keyword
+                row_object["% with " + self.make_keyword_str(keyword)] = round(
+                    num_of_songs_with_keyword / num_of_songs * 100, 1)
+            row_object["songs with " + self.make_keyword_str(keyword)] = num_of_songs_with_keyword
 
         return row_object
 
@@ -127,19 +135,36 @@ class Data_analyzer:
 
             # Write % and n
             if num_of_songs_with_keyword == 0:
-                row_object[artist + ":\n% with " + keyword] = 0.0
+                row_object[artist + ":\n% with " + self.make_keyword_str(keyword)] = 0.0
             else:
-                row_object[artist + ":\n% with " + keyword] = round(num_of_songs_with_keyword / num_of_songs * 100, 1)
-            row_object[artist + ":\nsongs with " + keyword] = num_of_songs_with_keyword
+                row_object[artist + ":\n% with " + self.make_keyword_str(keyword)] = round(
+                    num_of_songs_with_keyword / num_of_songs * 100, 1)
+            row_object[artist + ":\nsongs with " + self.make_keyword_str(keyword)] = num_of_songs_with_keyword
 
         return row_object
+
+    def make_keyword_str(self, keyword):
+        # !! same method in analysis_creator !!
+
+        if isinstance(keyword, str):
+            keyword_str = '"' + keyword + '"'
+        elif isinstance(keyword, list):
+            keyword_str = '"' + '" or "'.join(keyword) + '"'
+
+        return keyword_str
 
     def get_num_of_songs_with_keyword_in_songs_list(self, keyword, songs_list):
         num_of_songs_with_keyword = 0
 
-        for song in songs_list:
-            if song.keywords[keyword]:
-                num_of_songs_with_keyword += 1
+        if isinstance(keyword, str):
+            for song in songs_list:
+                if song.keywords[keyword]:
+                    num_of_songs_with_keyword += 1
+
+        elif isinstance(keyword, list):
+            for song in songs_list:
+                if any(song.keywords[single_keyword] for single_keyword in keyword):
+                    num_of_songs_with_keyword += 1
 
         return num_of_songs_with_keyword
 

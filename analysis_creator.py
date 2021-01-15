@@ -1,6 +1,5 @@
 from data_analyzer import Data_analyzer
 from genius_scraper import Genius_scraper
-from artist import Artist
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -27,16 +26,14 @@ class Analysis_creator:
                 my_genius_scraper = Genius_scraper()
                 artist.songs_list = my_genius_scraper.get_artist_songs_list(artist.id, artist.name)
                 print()
-                print(f'Found lyrics of {len(artist.songs_list)} songs by {artist.name}:')
+                print(f'Found lyrics of {len(artist.songs_list)} songs by {artist.name}')
+                print()
             else:
                 # Take songs from artist_dictionary
                 print()
-                print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary:')
+                print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary')
+                print()
 
-            # Make list of song titles
-            song_titles = [song.title for song in artist.songs_list]
-            print(song_titles)
-            print()
 
         # Get data analysis - percentages by year
         my_data_analyzer = Data_analyzer()
@@ -51,19 +48,7 @@ class Analysis_creator:
         # Make info string
         info_string = ""
         info_string += self.make_years_without_lyrics_str(data_list)
-        if request.method == "one_artist":
-            for data_row in data_list:
-                if data_row["songs total"] != 0:
-                    info_string += f'Example: In {data_row["Year"]}, {data_row["songs with " + request.keywords[0]]} of the {data_row["songs total"]} songs by {request.artists[0].name} contained the term "{request.keywords[0]}". That is {round(data_row["% with " + request.keywords[0]])} %.'
-                    break
-        elif request.method == "one_keyword":
-            for data_row in data_list:
-                if data_row["songs total"] != 0:
-                    info_songs_with_keyword = data_row[request.artists[0].name + ":\nsongs with " + request.keywords[0]]
-                    info_songs_total = data_row[request.artists[0].name + ":\nsongs total"]
-                    info_percent_with_keyword = data_row[request.artists[0].name + ":\n% with " + request.keywords[0]]
-                    info_string += f'Example: In {data_row["Year"]}, {info_songs_with_keyword} of the {info_songs_total} songs by {request.artists[0].name} contained the term "{request.keywords[0]}". That is {round(info_percent_with_keyword)} %.'
-                    break
+        info_string += self.make_example_str(data_list, request)
         print("Created info string")
 
         # Make IMG file
@@ -75,15 +60,10 @@ class Analysis_creator:
 
         # Make and name CSV file
         csv_file = self.make_csv(data_list)
-        if request.method == "one_artist":
-            keywords_string = ' '.join([elem for elem in request.keywords])
-            csv_file.name = f'Lyrics analysis {request.artists[0].name} {str(request.year_start)}-{str(request.year_end)} {keywords_string}.csv'
-        elif request.method == "one_keyword":
-            artists_string = ' '.join([artist.name for artist in request.artists])
-            csv_file.name = f'Lyrics analysis {artists_string} {str(year_range[0])}-{str(year_range[-1])} {request.keywords[0]}.csv'
+        csv_file.name = self.make_csv_name_string(request)
         print("Created CSV file")
 
-        return img_file, csv_file, info_string, request.artists
+        return img_file, csv_file, info_string
 
     def make_years_without_lyrics_str(self, data_list):
         years_without_lyrics_str = [str(data_row["Year"]) for data_row in data_list if isinstance(data_row["Year"], int) and data_row["songs total"] == 0]
@@ -91,6 +71,19 @@ class Analysis_creator:
             return f"No lyrics found for {', '.join(years_without_lyrics_str)}.\n"
         else:
             return ""
+
+    def make_example_str(self, data_list, request):
+        if request.method == "one_artist":
+            for data_row in data_list:
+                if data_row["songs total"] != 0:
+                    return f'Example: In {data_row["Year"]}, {data_row["songs with " + self.make_keyword_str(request.keywords[0])]} of the {data_row["songs total"]} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(data_row["% with " + self.make_keyword_str(request.keywords[0])])} %.'
+        elif request.method == "one_keyword":
+            for data_row in data_list:
+                if data_row["songs total"] != 0:
+                    info_songs_with_keyword = data_row[request.artists[0].name + ":\nsongs with " + self.make_keyword_str(request.keywords[0])]
+                    info_songs_total = data_row[request.artists[0].name + ":\nsongs total"]
+                    info_percent_with_keyword = data_row[request.artists[0].name + ":\n% with " + self.make_keyword_str(request.keywords[0])]
+                    return f'Example: In {data_row["Year"]}, {info_songs_with_keyword} of the {info_songs_total} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(info_percent_with_keyword)} %.'
 
     def make_img(self, artist_or_keyword, keywords_or_artists, data_list, method):
 
@@ -102,46 +95,27 @@ class Analysis_creator:
         # Grid
         plt.grid(b=None, which='major', axis='y')
 
-        # Graph lines
         for keyword_or_artist in keywords_or_artists:
 
-            x = []
-            y = []
-            for data_row in data_list_only_years:
-                if method == "one_artist":
-                    if data_row["songs total"] != 0:
-                        x.append(data_row["Year"])
-                        y.append(data_row["% with " + keyword_or_artist])
-                elif method == "one_keyword":
-                    if data_row[keyword_or_artist + ":\nsongs total"] != 0:
-                        x.append(data_row["Year"])
-                        y.append(data_row[keyword_or_artist + ":\n% with " + artist_or_keyword])
-
-            ax.plot(x, y, label=keyword_or_artist, marker=".")
+            # Plots
+            # TODO: Introduce option to disregard years with n<X
+            x, y = self.make_x_and_y_lists_for_plot(artist_or_keyword, data_list_only_years, keyword_or_artist, method, 1)
+            if method == "one_artist":
+                ax.plot(x, y, label=self.make_keyword_str(keyword_or_artist), marker=".")
+            elif method == "one_keyword":
+                ax.plot(x, y, label=keyword_or_artist, marker=".")
 
             # Data point annotations
             if len(data_list_only_years) < 30:
                 for i, txt in enumerate(y):
-                    # if txt != 0.0:
                     ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=6)
 
         # Title
-        if method == "one_artist":
-            if len(keywords_or_artists) > 1:
-                plt.title(f'% of {artist_or_keyword} songs with different keywords in their lyrics, per year', pad=15)
-            else:
-                plt.title(f'% of {artist_or_keyword} songs with "{keywords_or_artists[0]}" in their lyrics, per year', pad=15)
-        elif method == "one_keyword":
-            if len(keywords_or_artists) > 1:
-                plt.title(f'% of songs by different artists with "{artist_or_keyword}" in their lyrics, per year', pad=15)
-            else:
-                plt.title(f'% of {keywords_or_artists[0]} songs with "{artist_or_keyword}" in their lyrics, per year', pad=15)
+        plt.title(self.make_img_title_str(artist_or_keyword, keywords_or_artists, method), pad=15, fontsize=10)
 
         # Bottom text
         ax.text(0.5, -0.115, 'source: lyrics on Genius.com - create your own lyrics stats with t.me/lyricsbot',
-                verticalalignment='bottom', horizontalalignment='center',
-                transform=ax.transAxes,
-                color='dimgray', fontsize=6)
+                verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
 
         # X-axis labels should not be decimal numbers (2010.5)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -180,6 +154,32 @@ class Analysis_creator:
 
         return img_file
 
+    def make_x_and_y_lists_for_plot(self, artist_or_keyword, data_list_only_years, keyword_or_artist, method, songs_total_min):
+        x = []
+        y = []
+        for data_row in data_list_only_years:
+            if method == "one_artist":
+                if data_row["songs total"] >= songs_total_min:
+                    x.append(data_row["Year"])
+                    y.append(data_row["% with " + self.make_keyword_str(keyword_or_artist)])
+            elif method == "one_keyword":
+                if data_row[keyword_or_artist + ":\nsongs total"] >= songs_total_min:
+                    x.append(data_row["Year"])
+                    y.append(data_row[keyword_or_artist + ":\n% with " + self.make_keyword_str(artist_or_keyword)])
+        return x, y
+
+    def make_img_title_str(self, artist_or_keyword, keywords_or_artists, method):
+        if method == "one_artist":
+            if len(keywords_or_artists) > 1:
+                return f'% of {artist_or_keyword} songs with different keywords in their lyrics, per year'
+            else:
+                return f'% of {artist_or_keyword} songs with {self.make_keyword_str(keywords_or_artists[0])} in their lyrics, per year'
+        elif method == "one_keyword":
+            if len(keywords_or_artists) > 1:
+                return f'% of songs by different artists with {self.make_keyword_str(artist_or_keyword)} in their lyrics, per year'
+            else:
+                return f'% of {keywords_or_artists[0]} songs with {self.make_keyword_str(artist_or_keyword)} in their lyrics, per year'
+
     def make_csv(self, data_list):
 
         # Make 2D list
@@ -197,3 +197,31 @@ class Analysis_creator:
         csv_file.seek(0)
 
         return csv_file
+
+    def make_csv_name_string(self, request):
+
+        if request.method == "one_artist":
+            keywords_string = ' '.join([self.make_keyword_str_no_quotations(elem) for elem in request.keywords])
+            return f'Lyrics analysis {request.artists[0].name} {str(request.year_start)}-{str(request.year_end)} {keywords_string}.csv'
+        elif request.method == "one_keyword":
+            artists_string = ' '.join([artist.name for artist in request.artists])
+            return f'Lyrics analysis {artists_string} {str(request.year_start)}-{str(request.year_start)} {self.make_keyword_str_no_quotations(request.keywords[0])}.csv'
+
+    def make_keyword_str(self, keyword):
+        # !! same method in data_analyzer !!
+
+        if isinstance(keyword, str):
+            keyword_str = '"' + keyword + '"'
+        elif isinstance(keyword, list):
+            keyword_str = '"' + '" or "'.join(keyword) + '"'
+
+        return keyword_str
+
+    def make_keyword_str_no_quotations(self, keyword):
+
+        if isinstance(keyword, str):
+            keyword_str = keyword
+        elif isinstance(keyword, list):
+            keyword_str = '-'.join(keyword)
+
+        return keyword_str
