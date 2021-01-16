@@ -58,7 +58,9 @@ class Genius_scraper:
             print(f'Successfully downloaded HTML and found year of another {len([song for song in songs_list_no_html_or_no_year if song.year != "unknown year"])} songs.')
 
         print(f'END: Successfully found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
-        print()
+
+        if len(artist_songs_list) < (len(song_return_objects_main_artist) * 0.9):
+            return "Error"
 
         return [song for song in artist_songs_list if song.lyrics is not None]
 

@@ -15,3 +15,5 @@ class User_request:
 
         self.keywords = []
 
+        self.minimum_n_per_year = 0
+

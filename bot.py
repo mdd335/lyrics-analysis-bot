@@ -29,7 +29,6 @@ artist_list = []
 
 # TODO: add profile pictures
 # TODO: several artists as one (AKAs)
-# TODO: several keywords as one (synonyms)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -101,6 +100,13 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
 
 def add_keywords_oa(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text.lower()
+
+    # Check for minimum_n_per_year input
+    if keyword.startswith("minimum-"):
+        minimum_n_per_year = keyword[keyword.find('minimum-') + 8:]
+        request_dictionary[update.message.chat.id].minimum_n_per_year = int(minimum_n_per_year)
+        update.message.reply_text(f'Graph will only make data points for years with at least n={minimum_n_per_year} songs. Add another keyword or send /analyze to start analysis.')
+        return ANALYSIS_OA
 
     # Check spelling and type (OR?) of input. If correct, add to request.keywords
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
@@ -188,6 +194,14 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
 
 def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
     artist_search_str = update.message.text
+
+    # Check for minimum_n_per_year input
+    if artist_search_str.startswith("minimum-"):
+        minimum_n_per_year = artist_search_str[artist_search_str.find('minimum-') + 8:]
+        request_dictionary[update.message.chat.id].minimum_n_per_year = int(minimum_n_per_year)
+        update.message.reply_text(f'Graph will only make data points for years with at least n={minimum_n_per_year} songs. Add another artist or send /analyze to start analysis.')
+        return ANALYSIS_OK
+
     my_genius_scraper = Genius_scraper()
     artist_name, artist_url, artist_id = my_genius_scraper.get_artist_name_url_id(artist_search_str)
 
@@ -219,7 +233,7 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
 
 @run_async
 def get_analysis(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 10 minutes, there was probably an error. Please try again later or try other artists/keywords.)')
+    update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 15 minutes, there was probably an error. Please try again later or try other artists/keywords.)')
 
     # Add songs list(s) to artist(s) if they are already in artist list
     artists = request_dictionary[update.message.chat.id].artists
@@ -255,10 +269,9 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
 def info(update: Update, context: CallbackContext) -> int:
     # TODO: Add info
-    update.message.reply_text("*How does it work?* Info", parse_mode="Markdown")
-    update.message.reply_text("Info")
-    update.message.reply_text("Info")
-    update.message.reply_text(f'Send /start anytime to start.')
+    # update.message.reply_text("*How does it work?* Info", parse_mode="Markdown")
+    update.message.reply_text('*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs, I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h in case the same artist is requested again.) Then I check the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n*Entering artists:* I use your input as a search term on Genius and suggest the first artist that comes up. If you spelled the artist exactly as it is spelled on Genius and I still make a wrong suggestion, try entering a unique album or song title of the artist instead.\n*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n*minimum-X:* When asked for additional keywords/artists in the last step, you can send „minimum-X“ with X being a number, e.g. 5. I will then only make data points in the graph for years in which the artist has a minimum of X total songs. This can make the graph prettier because there are less outliers.\n*If I dont respond:* Send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com', parse_mode="Markdown")
+    update.message.reply_text(f'Send /start anytime to (re-)start.')
 
     return ConversationHandler.END
 

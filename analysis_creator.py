@@ -52,9 +52,9 @@ class Analysis_creator:
 
         # Make IMG file
         if request.method == "one_artist":
-            img_file = self.make_img(request.artists[0].name, request.keywords, data_list, "one_artist")
+            img_file = self.make_img(request.artists[0].name, request.keywords, data_list, "one_artist", request.minimum_n_per_year)
         elif request.method == "one_keyword":
-            img_file = self.make_img(request.keywords[0], [artist.name for artist in request.artists], data_list, "one_keyword")
+            img_file = self.make_img(request.keywords[0], [artist.name for artist in request.artists], data_list, "one_keyword", request.minimum_n_per_year)
         print("Created IMG file")
 
         # Make and name CSV file
@@ -84,7 +84,7 @@ class Analysis_creator:
                     info_percent_with_keyword = data_row[request.artists[0].name + ":\n% with " + self.make_keyword_str(request.keywords[0])]
                     return f'Example: In {data_row["Year"]}, {info_songs_with_keyword} of the {info_songs_total} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(info_percent_with_keyword)} %.'
 
-    def make_img(self, artist_or_keyword, keywords_or_artists, data_list, method):
+    def make_img(self, artist_or_keyword, keywords_or_artists, data_list, method, minimum_n_per_year):
 
         data_list_only_years = [data_row for data_row in data_list if isinstance(data_row["Year"], int)]
 
@@ -97,15 +97,14 @@ class Analysis_creator:
         for keyword_or_artist in keywords_or_artists:
 
             # Plots
-            # TODO: Introduce option to disregard years with n < X
-            x, y = self.make_x_and_y_lists_for_plot(artist_or_keyword, data_list_only_years, keyword_or_artist, method, 5)
+            x, y = self.make_x_and_y_lists_for_plot(artist_or_keyword, data_list_only_years, keyword_or_artist, method, minimum_n_per_year)
             if method == "one_artist":
                 ax.plot(x, y, label=self.make_keyword_str(keyword_or_artist), marker=".")
             elif method == "one_keyword":
                 ax.plot(x, y, label=keyword_or_artist, marker=".")
 
             # Data point annotations
-            if len(data_list_only_years) < 30:
+            if len(data_list_only_years) < 35:
                 for i, txt in enumerate(y):
                     ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=6)
 
@@ -113,8 +112,7 @@ class Analysis_creator:
         plt.title(self.make_img_title_str(artist_or_keyword, keywords_or_artists, method), pad=15, fontsize=10)
 
         # Bottom text
-        ax.text(0.5, -0.115, 'source: lyrics on Genius.com - create your own lyrics stats with t.me/lyricsbot',
-                verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
+        ax.text(0.5, -0.115, 'source: lyrics on Genius.com - create your own lyrics stats with t.me/lyricsbot', verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
 
         # X-axis labels should not be decimal numbers (2010.5)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -153,16 +151,16 @@ class Analysis_creator:
 
         return img_file
 
-    def make_x_and_y_lists_for_plot(self, artist_or_keyword, data_list_only_years, keyword_or_artist, method, songs_total_min):
+    def make_x_and_y_lists_for_plot(self, artist_or_keyword, data_list_only_years, keyword_or_artist, method, minimum_n_per_year):
         x = []
         y = []
         for data_row in data_list_only_years:
             if method == "one_artist":
-                if data_row["songs total"] >= songs_total_min:
+                if data_row["songs total"] >= minimum_n_per_year:
                     x.append(data_row["Year"])
                     y.append(data_row["% with " + self.make_keyword_str(keyword_or_artist)])
             elif method == "one_keyword":
-                if data_row[keyword_or_artist + ":\nsongs total"] >= songs_total_min:
+                if data_row[keyword_or_artist + ":\nsongs total"] >= minimum_n_per_year:
                     x.append(data_row["Year"])
                     y.append(data_row[keyword_or_artist + ":\n% with " + self.make_keyword_str(artist_or_keyword)])
         return x, y
