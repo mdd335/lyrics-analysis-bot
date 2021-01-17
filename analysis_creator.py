@@ -26,7 +26,7 @@ class Analysis_creator:
                 my_genius_scraper = Genius_scraper()
                 artist.songs_list = my_genius_scraper.get_artist_songs_list(artist.id, artist.name)
                 print()
-                print(f'Found lyrics of {len(artist.songs_list)} songs by {artist.name}')
+                print(f'Scraped lyrics of {len(artist.songs_list)} songs by {artist.name}')
                 print()
             else:
                 # Take songs from artist_dictionary
@@ -92,7 +92,7 @@ class Analysis_creator:
         fig, ax = plt.subplots()
 
         # Grid
-        plt.grid(b=None, which='major', axis='y')
+        plt.grid(b=None, which='major', axis='both', color="whitesmoke")
 
         for keyword_or_artist in keywords_or_artists:
 
@@ -104,9 +104,12 @@ class Analysis_creator:
                 ax.plot(x, y, label=keyword_or_artist, marker=".")
 
             # Data point annotations
-            if len(data_list_only_years) < 35:
-                for i, txt in enumerate(y):
-                    ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=6)
+            if len(data_list_only_years) > 25:
+                data_point_annotations_font_size = 4
+            else:
+                data_point_annotations_font_size = 6
+            for i, txt in enumerate(y):
+                ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=data_point_annotations_font_size)
 
         # Title
         plt.title(self.make_img_title_str(artist_or_keyword, keywords_or_artists, method), pad=15, fontsize=10)
@@ -115,7 +118,7 @@ class Analysis_creator:
         ax.text(0.5, -0.115, 'source: lyrics on Genius.com - create your own lyrics stats with t.me/lyricsbot', verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
 
         # X-axis labels should not be decimal numbers (2010.5)
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.xaxis.set_major_locator(MaxNLocator(steps=[1, 2, 5, 10], integer=True))
 
         '''
         # X-axis label annotations (n =)

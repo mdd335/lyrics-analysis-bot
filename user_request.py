@@ -1,11 +1,12 @@
 class User_request:
 
     def __init__(self, chat_id):
+
         self.chat_id = chat_id
 
         self.method = None
 
-        self.artist_draft = None
+        self.artist_drafts = None
 
         self.artists = []
 
@@ -15,5 +16,5 @@ class User_request:
 
         self.keywords = []
 
-        self.minimum_n_per_year = 0
+        self.minimum_n_per_year = 1
 

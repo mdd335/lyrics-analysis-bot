@@ -49,8 +49,8 @@ class Genius_scraper:
         print(f'Successfully found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
         print()
 
-        # 4 times, if html download failed or no year found, try again
-        for _ in range(4):
+        # X times, if html download failed or no year found, try again
+        for _ in range(2):
             songs_list_no_html_or_no_year = [song for song in artist_songs_list if song.html is None or song.year == "unknown year"]
             self.add_htmls_to_songs_list(songs_list_no_html_or_no_year)
             songs_list_with_html = [song for song in songs_list_no_html_or_no_year if song.html is not None]
@@ -63,6 +63,24 @@ class Genius_scraper:
             return "Error"
 
         return [song for song in artist_songs_list if song.lyrics is not None]
+
+    def get_artist_name_url_id_of_first_4(self, artist_search_str):
+        """Gets the first 4 artists of the search results for a search string (with name, url and id)."""
+        path ="search"
+        params = {'q' : artist_search_str}
+        data = self.get_json(path = path, params = params)
+
+        artist_suggestions = []
+        for artist in data['response']['hits']:
+            artist_name = artist['result']['primary_artist']['name']
+            if not any(artist_name == artist_suggestion['name'] for artist_suggestion in artist_suggestions):
+                artist_url = artist['result']['primary_artist']['url']
+                artist_id = artist['result']['primary_artist']['id']
+                artist_suggestions.append({"name": artist_name, "url": artist_url, "id": artist_id})
+                # if len(artist_suggestions) == 4:
+                    # break
+
+        return artist_suggestions
 
     def get_artist_name_url_id(self, artist_search_str):
         """Gets the name, url and id of an artist from Genius."""
@@ -102,8 +120,6 @@ class Genius_scraper:
                     print("All pages finished scraping")
             except:
                 print("Error scraping page {}".format(current_page))
-
-        print("Found " + str(len(songs)) + " songs")
 
         return songs
 

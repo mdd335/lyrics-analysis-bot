@@ -5,8 +5,7 @@ from artist import Artist
 
 import logging
 import datetime
-from typing import Dict
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 from telegram.ext.dispatcher import run_async
 import os
@@ -34,8 +33,8 @@ artist_list = []
 def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
-    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s), keyword(s) and a time span, I will analyze the artists lyrics on Genius.com and create stats about how often they contain the keyword(s). See my profile pictures for examples. Send /info for more detailed info. Send /start at any time to start from the beginning.")
-    update.message.reply_text("To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 5 artists).")
+    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s), keyword(s) and a time span, I will analyze the artists lyrics on Genius.com and create stats about how often they contain the keyword(s). See my profile pictures for examples. Send (type/tap) /info for more detailed info. Send /start at any time to start from the beginning.")
+    update.message.reply_text("To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
 
     return METHOD
 
@@ -48,52 +47,63 @@ def choose_artist_oa(update: Update, context: CallbackContext) -> int:
 
 def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
     artist_search_str = update.message.text
-    my_genius_scraper = Genius_scraper()
-    artist_name, artist_url, artist_id = my_genius_scraper.get_artist_name_url_id(artist_search_str)
-
-    request_dictionary[update.message.chat.id].artist_draft = Artist(artist_name, artist_id)
-
-    artist_url = artist_url[artist_url.find('genius'):]
-    update.message.reply_text(f'I found {artist_name} ({artist_url}). Right artist? Send /continue. Wrong? Please enter the name again. Try spelling it as it is spelled on Genius.', disable_web_page_preview=True)
+    artist_suggestions = get_artist_search_results(artist_search_str)
+    if len(artist_suggestions) == 0:
+        update.message.reply_text(f'No artist found. Please check spelling and enter the artist again.')
+        return ARTIST_OA
+    request_dictionary[update.message.chat.id].artist_drafts = artist_suggestions
+    reply_markup = make_artist_reply_keyboard(artist_suggestions)
+    artists_string = ', '.join([f'[{artist_suggestion["name"]}]({artist_suggestion["url"]})' for artist_suggestion in artist_suggestions])
+    update.message.reply_text(f'I found (Genius pages are linked): {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
 
     return ARTIST_CONF_OA
 
 
 def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
-    if request_dictionary[update.message.chat.id].artist_draft.name == "Money Boy":
-        update.message.reply_text(f'Gute Wahl Mois')
 
-    request_dictionary[update.message.chat.id].artists.append(request_dictionary[update.message.chat.id].artist_draft)
+    # Check artist confirmation
+    artist_confirmation_str = update.message.text
+    reply_markup = ReplyKeyboardRemove()
+    if artist_confirmation_str == "Money Boy":
+        update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
+    if artist_confirmation_str == "None of those":
+        update.message.reply_text(f'Try spelling the artist exactly as it is spelled on Genius. If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', reply_markup=reply_markup)
+        return ARTIST_OA
+    elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in request_dictionary[update.message.chat.id].artist_drafts):
+        update.message.reply_text(f'Something didnt work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
+        return ARTIST_OA
+    else:
+        add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
 
-    update.message.reply_text(f'Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
-
+    # Ask for start year
+    update.message.reply_text(f'Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.', reply_markup=reply_markup)
     return YEAR_START_OA
 
 
 def choose_year_end_oa(update: Update, context: CallbackContext) -> int:
-    year_start = update.message.text
 
-    # Check if answer is numeric and between 1900 and 2030, otherwise ask again
+    # Check start year
+    year_start = update.message.text
     if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
         update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
         return YEAR_START_OA
-
-    # Answer
     request_dictionary[update.message.chat.id].year_start = int(year_start)
-    update.message.reply_text(f'Next, please choose the year in which the time span should end.')
+
+    # Ask for end year
+    update.message.reply_text(f'Next, please choose the end year.')
     return YEAR_END_OA
 
 
 def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
-    year_end = update.message.text
 
-    # Check if answer is numeric and between start year and 2030, otherwise ask again
+    # Check end year
+    year_end = update.message.text
     if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
         update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OA
-
-    # Answer
     request_dictionary[update.message.chat.id].year_end = int(year_end)
+
+    # Ask for first keyword
     update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first keyword to analyze (no case sensitivity).')
     return KEYWORD_OA
 
@@ -102,8 +112,8 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
     keyword = update.message.text.lower()
 
     # Check for minimum_n_per_year input
-    if keyword.startswith("minimum-"):
-        minimum_n_per_year = keyword[keyword.find('minimum-') + 8:]
+    if keyword.startswith("minimum="):
+        minimum_n_per_year = keyword[keyword.find('minimum=') + 8:]
         request_dictionary[update.message.chat.id].minimum_n_per_year = int(minimum_n_per_year)
         update.message.reply_text(f'Graph will only make data points for years with at least n={minimum_n_per_year} songs. Add another keyword or send /analyze to start analysis.')
         return ANALYSIS_OA
@@ -112,22 +122,15 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
         update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
         return KEYWORD_OA
-    elif "/" in keyword:
-        if len(request_dictionary[update.message.chat.id].keywords) < 10:
+    elif len(request_dictionary[update.message.chat.id].keywords) < 10:
+        if "/" in keyword:
             request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
-    else:
-        if len(request_dictionary[update.message.chat.id].keywords) < 10:
+        else:
             request_dictionary[update.message.chat.id].keywords.append(keyword)
 
     # Answer
     num_of_keywords = len(request_dictionary[update.message.chat.id].keywords)
-    list_for_keywords_string = []
-    for keyword in request_dictionary[update.message.chat.id].keywords:
-        if isinstance(keyword, str):
-            list_for_keywords_string.append('"' + keyword + '"')
-        elif isinstance(keyword, list):
-            list_for_keywords_string.append(' or '.join(['"' + elem + '"' for elem in keyword]))
-    keywords_string = ', '.join(list_for_keywords_string)
+    keywords_string = make_keywords_string(request_dictionary[update.message.chat.id])
     if num_of_keywords == 1:
         update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
     elif num_of_keywords == 4:
@@ -136,7 +139,6 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
         update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
     else:
         update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start analysis.')
-
     return ANALYSIS_OA
 
 
@@ -147,8 +149,9 @@ def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
 
 
 def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
-    keyword = update.message.text.lower()
 
+    # Check spelling and type (OR?) of input. If correct, add to request.keywords and create keyword_str
+    keyword = update.message.text.lower()
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
         update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
         return KEYWORD_OK
@@ -159,35 +162,35 @@ def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
         request_dictionary[update.message.chat.id].keywords.append(keyword)
         keyword_str = '"' + keyword + '"'
 
+    # Answer
     update.message.reply_text(f'I will analyze {keyword_str}. Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
-
     return YEAR_START_OK
 
 
 def choose_year_end_ok(update: Update, context: CallbackContext) -> int:
-    year_start = update.message.text
 
-    # Check if answer is numeric and between 1900 and 2030, otherwise ask again
+    # Check start year
+    year_start = update.message.text
     if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
         update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
         return YEAR_START_OK
-
-    # Answer
     request_dictionary[update.message.chat.id].year_start = int(year_start)
-    update.message.reply_text(f'Please choose the year in which the time span should end.')
+
+    # Ask for end year
+    update.message.reply_text(f'Please choose the end year.')
     return YEAR_END_OK
 
 
 def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
-    year_end = update.message.text
 
-    # Check if answer is numeric and between start year and 2030, otherwise ask again
+    # Check end year
+    year_end = update.message.text
     if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
         update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
         return YEAR_END_OK
-
-    # Answer
     request_dictionary[update.message.chat.id].year_end = int(year_end)
+
+    # Ask for first artist
     update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first artist to analyze.')
     return ARTIST_OK
 
@@ -196,38 +199,51 @@ def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
     artist_search_str = update.message.text
 
     # Check for minimum_n_per_year input
-    if artist_search_str.startswith("minimum-"):
-        minimum_n_per_year = artist_search_str[artist_search_str.find('minimum-') + 8:]
+    if artist_search_str.lower().startswith("minimum="):
+        minimum_n_per_year = artist_search_str[artist_search_str.lower().find('minimum=') + 8:]
         request_dictionary[update.message.chat.id].minimum_n_per_year = int(minimum_n_per_year)
         update.message.reply_text(f'Graph will only make data points for years with at least n={minimum_n_per_year} songs. Add another artist or send /analyze to start analysis.')
         return ANALYSIS_OK
 
-    my_genius_scraper = Genius_scraper()
-    artist_name, artist_url, artist_id = my_genius_scraper.get_artist_name_url_id(artist_search_str)
-
-    request_dictionary[update.message.chat.id].artist_draft = Artist(artist_name, artist_id)
-
-    artist_url = artist_url[artist_url.find('genius'):]
-    update.message.reply_text(f'I found {artist_name} ({artist_url}). Right artist? Send /continue. Wrong? Please enter the name again. Try spelling it as it is spelled on Genius.', disable_web_page_preview=True)
-
+    # Otherwise, show artist suggestions
+    artist_suggestions = get_artist_search_results(artist_search_str)
+    if len(artist_suggestions) == 0:
+        update.message.reply_text(f'No artist found. Please check spelling and enter the artist again.')
+        return ARTIST_OK
+    request_dictionary[update.message.chat.id].artist_drafts = artist_suggestions
+    reply_markup = make_artist_reply_keyboard(artist_suggestions)
+    artists_string = ', '.join([f'[{artist_suggestion["name"]}]({artist_suggestion["url"]})' for artist_suggestion in artist_suggestions])
+    update.message.reply_text(f'I found (Genius pages are linked): {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
     return ARTIST_CONF_OK
 
 
 def add_artists_ok(update: Update, context: CallbackContext) -> int:
-    if len(request_dictionary[update.message.chat.id].artists) < 5:
-        if request_dictionary[update.message.chat.id].artist_draft.name == "Money Boy":
-            update.message.reply_text(f'Gute Wahl Mois')
-        request_dictionary[update.message.chat.id].artists.append(request_dictionary[update.message.chat.id].artist_draft)
+    artist_confirmation_str = update.message.text
+    reply_markup = ReplyKeyboardRemove()
 
+    # Check artist confirmation
+    if len(request_dictionary[update.message.chat.id].artists) < 4:
+        if artist_confirmation_str == "Money Boy":
+            update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
+        if artist_confirmation_str == "None of those":
+            update.message.reply_text(f'Try spelling the artist exactly as it is spelled on Genius. If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', reply_markup=reply_markup)
+            return ARTIST_OK
+        elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in
+                     request_dictionary[update.message.chat.id].artist_drafts):
+            update.message.reply_text(f'Something didnt work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
+            return ARTIST_OK
+        else:
+            add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
+
+    # Ask for next artist
     num_of_artists = len(request_dictionary[update.message.chat.id].artists)
     artists_string = ', '.join([artist.name for artist in request_dictionary[update.message.chat.id].artists])
     if num_of_artists == 1:
-        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start analysis.')
-    elif num_of_artists < 5:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start analysis.')
+        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start analysis.', reply_markup=reply_markup)
+    elif num_of_artists < 4:
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start analysis.', reply_markup=reply_markup)
     else:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 5 artists reached. Send /analyze to start analysis.')
-
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 4 artists reached. Send /analyze to start analysis.', reply_markup=reply_markup)
     return ANALYSIS_OK
 
 
@@ -268,16 +284,14 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
 
 def info(update: Update, context: CallbackContext) -> int:
-    # TODO: Add info
-    # update.message.reply_text("*How does it work?* Info", parse_mode="Markdown")
-    update.message.reply_text('*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs, I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h in case the same artist is requested again.) Then I check the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n*Entering artists:* I use your input as a search term on Genius and suggest the first artist that comes up. If you spelled the artist exactly as it is spelled on Genius and I still make a wrong suggestion, try entering a unique album or song title of the artist instead.\n*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n*minimum-X:* When asked for additional keywords/artists in the last step, you can send „minimum-X“ with X being a number, e.g. 5. I will then only make data points in the graph for years in which the artist has a minimum of X total songs. This can make the graph prettier because there are less outliers.\n*If I dont respond:* Send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com', parse_mode="Markdown")
+    update.message.reply_text('*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that comes up to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n*minimum=X:* When asked for additional keywords/artists in the last step, you can send „minimum=X“ with X being a number, e.g. 10. I will then only make data points in the graph for years in which the artist has a minimum of X total songs. This can make the graph prettier because there are less outliers.\n*If I dont respond:* If I am creating an analysis, please wait for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius. Shoutout to them!', parse_mode="Markdown")
     update.message.reply_text(f'Send /start anytime to (re-)start.')
 
     return ConversationHandler.END
 
 
 def main() -> None:
-    # Create the Updater and pass it your bot's token.
+    # Create the Updater and pass it your bots token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
     updater = Updater("***REMOVED_TELEGRAM_BOT_TOKEN***", use_context=True)
@@ -304,8 +318,7 @@ def main() -> None:
             ],
             ARTIST_CONF_OA: [
                 CommandHandler('start', start),
-                CommandHandler('continue', choose_year_start_oa),
-                MessageHandler(Filters.text, confirm_artist_oa)
+                MessageHandler(Filters.text, choose_year_start_oa)
             ],
             YEAR_START_OA: [
                 CommandHandler('start', start),
@@ -342,8 +355,7 @@ def main() -> None:
             ],
             ARTIST_CONF_OK: [
                 CommandHandler('start', start),
-                CommandHandler('continue', add_artists_ok),
-                MessageHandler(Filters.text, confirm_artist_ok)
+                MessageHandler(Filters.text, add_artists_ok)
             ],
             ANALYSIS_OK: [
                 CommandHandler('start', start),
@@ -377,6 +389,50 @@ def clean_dictionaries():
         request_dictionary.clear()
 
 
+def make_artist_reply_keyboard(artist_suggestions):
+    custom_keyboard = []
+    custom_keyboard_row_draft = []
+    if len(artist_suggestions) == 1:
+        custom_keyboard.append([artist_suggestions[0]['name']])
+    for i, suggestion in enumerate(artist_suggestions):
+        custom_keyboard_row_draft.append(suggestion["name"])
+        if i % 2 == 1:
+            custom_keyboard.append(custom_keyboard_row_draft)
+            custom_keyboard_row_draft = []
+    custom_keyboard.append(["None of those"])
+    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
+    return reply_markup
+
+
+def get_artist_search_results(artist_search_str):
+    my_genius_scraper = Genius_scraper()
+    artist_suggestions = my_genius_scraper.get_artist_name_url_id_of_first_4(artist_search_str)
+    if len(artist_suggestions) > 8:
+        artist_suggestions = artist_suggestions[:8]
+    elif len(artist_suggestions) > 1 and len(artist_suggestions) % 2 == 1:
+        del artist_suggestions[-1]
+    return artist_suggestions
+
+
+def make_keywords_string(request):
+    list_for_keywords_string = []
+    for keyword in request.keywords:
+        if isinstance(keyword, str):
+            list_for_keywords_string.append('"' + keyword + '"')
+        elif isinstance(keyword, list):
+            list_for_keywords_string.append(' or '.join(['"' + elem + '"' for elem in keyword]))
+    keywords_string = ', '.join(list_for_keywords_string)
+    return keywords_string
+
+
+def add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request):
+    for artist_draft in request.artist_drafts:
+        if artist_draft["name"] == artist_confirmation_str:
+            request.artists.append( Artist(artist_draft["name"], artist_draft["id"]))
+
+
 if __name__ == '__main__':
     main()
+
+
 
