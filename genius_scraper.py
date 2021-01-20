@@ -50,7 +50,7 @@ class Genius_scraper:
         print()
 
         # X times, if html download failed or no year found, try again
-        for _ in range(2):
+        for _ in range(3):
             songs_list_no_html_or_no_year = [song for song in artist_songs_list if song.html is None or song.year == "unknown year"]
             self.add_htmls_to_songs_list(songs_list_no_html_or_no_year)
             songs_list_with_html = [song for song in songs_list_no_html_or_no_year if song.html is not None]

@@ -17,8 +17,6 @@ class Analysis_creator:
         print(f'CREATING ANALYSIS: {request.method}, artists(s): {[artist.name for artist in request.artists]}, keyword(s): {request.keywords}')
         print()
 
-        year_range = list(range(request.year_start, request.year_end + 1))
-
         for artist in request.artists:
             # Check whether song list has to be scraped
             if artist.songs_list is None:
@@ -34,12 +32,9 @@ class Analysis_creator:
                 print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary')
                 print()
 
-        # Get data analysis - percentages by year
+        # Get data analysis list
         my_data_analyzer = Data_analyzer()
-        if request.method == "one_artist":
-            data_list = my_data_analyzer.analyze_data_oa(request.artists[0], request.keywords, year_range)
-        elif request.method == "one_keyword":
-            data_list = my_data_analyzer.analyze_data_ok(request.keywords[0], request.artists, year_range)
+        data_list = my_data_analyzer.make_data_list(request)
         print("Percentages (data_list):")
         print(data_list)
         print()
@@ -57,7 +52,7 @@ class Analysis_creator:
             img_file = self.make_img(request.keywords[0], [artist.name for artist in request.artists], data_list, "one_keyword", request.minimum_n_per_year)
         print("Created IMG file")
 
-        # Make and name CSV file
+        # Make CSV file
         csv_file = self.make_csv(data_list)
         csv_file.name = self.make_csv_name_string(request)
         print("Created CSV file")
@@ -225,3 +220,5 @@ class Analysis_creator:
             keyword_str = '-'.join(keyword)
 
         return keyword_str
+
+
