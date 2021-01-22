@@ -35,6 +35,11 @@ class Genius_scraper:
         print("Found " + str(len(song_return_objects_main_artist)) + " songs as main artist")
         print()
 
+        # If there are more than 900 songs in the list, choose random sample of 900
+        if len(song_return_objects_main_artist) > 900:
+            print("More than 900 songs, so taking random sample of 900.")
+            song_return_objects_main_artist = random.sample(song_return_objects_main_artist, 900)
+
         # Make url list from song return objects
         artist_songs_list = [Song("http://genius.com" + song["path"]) for song in song_return_objects_main_artist]
 
@@ -74,11 +79,10 @@ class Genius_scraper:
         for artist in data['response']['hits']:
             artist_name = artist['result']['primary_artist']['name']
             if not any(artist_name == artist_suggestion['name'] for artist_suggestion in artist_suggestions):
-                artist_url = artist['result']['primary_artist']['url']
-                artist_id = artist['result']['primary_artist']['id']
-                artist_suggestions.append({"name": artist_name, "url": artist_url, "id": artist_id})
-                # if len(artist_suggestions) == 4:
-                    # break
+                if not ("," in artist_name and "&" in artist_name):
+                    artist_url = artist['result']['primary_artist']['url']
+                    artist_id = artist['result']['primary_artist']['id']
+                    artist_suggestions.append({"name": artist_name, "url": artist_url, "id": artist_id})
 
         return artist_suggestions
 
@@ -126,11 +130,6 @@ class Genius_scraper:
     def add_htmls_to_songs_list(self, songs_list):
 
         print("Downloading HTMLs ...")
-
-        # If there are more than 900 songs in the URL list, choose random sample of 900
-        if len(songs_list) > 900:
-            print("More than 900 songs, so taking random sample of 900.")
-            songs_list = random.sample(songs_list, 900)
 
         # Create html list from url list,
         # splitting it up if more than 300 songs, because for some reasons aiohttp seems to struggle with bigger lists

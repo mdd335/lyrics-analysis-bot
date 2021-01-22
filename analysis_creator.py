@@ -107,10 +107,10 @@ class Analysis_creator:
                 ax.annotate(str(round(txt)) + "%", (x[i], y[i]), xytext=(10, 10), textcoords='offset pixels', color='dimgray', fontsize=data_point_annotations_font_size)
 
         # Title
-        plt.title(self.make_img_title_str(artist_or_keyword, keywords_or_artists, method), pad=15, fontsize=10)
+        plt.title(self.make_img_title_str(artist_or_keyword, keywords_or_artists, method), pad=15, fontsize=9)
 
         # Bottom text
-        ax.text(0.5, -0.115, 'source: lyrics on Genius.com - create your own lyrics stats with t.me/lyricsbot', verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
+        ax.text(0.5, -0.115, 'source: lyrics on Genius.com - made with t.me/lyricsbot', verticalalignment='bottom', horizontalalignment='center', transform=ax.transAxes, color='dimgray', fontsize=6)
 
         # X-axis labels should not be decimal numbers (2010.5)
         ax.xaxis.set_major_locator(MaxNLocator(steps=[1, 2, 5, 10], integer=True))

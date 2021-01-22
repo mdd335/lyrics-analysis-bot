@@ -65,7 +65,7 @@ def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
     reply_markup = ReplyKeyboardRemove()
     if artist_confirmation_str == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
-    if artist_confirmation_str == "None of those":
+    if "None of those" in artist_confirmation_str:
         update.message.reply_text(f'Try spelling the artist exactly as it is spelled on Genius. If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', reply_markup=reply_markup)
         return ARTIST_OA
     elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in request_dictionary[update.message.chat.id].artist_drafts):
@@ -220,7 +220,7 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
     if len(request_dictionary[update.message.chat.id].artists) < 4:
         if artist_confirmation_str == "Money Boy":
             update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
-        if artist_confirmation_str == "None of those":
+        if "None of those" in artist_confirmation_str:
             update.message.reply_text(f'Try spelling the artist exactly as it is spelled on Genius. If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', reply_markup=reply_markup)
             return ARTIST_OK
         elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in
@@ -268,7 +268,7 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(info_string)
     update.message.reply_text(f'Here is the more detailed data as a csv file (can be opened in Excel or similar apps):')
     context.bot.send_document(chat_id=update.message.chat_id, document=csv_file)
-    update.message.reply_text(f'Send /info for more detailed info on how the data was created. Send /start anytime to start over.')
+    update.message.reply_text(f'Send /info for more detailed info on how the data was created. Send /start anytime to restart.')
     print("Analysis finished, output sent")
     print()
 
@@ -279,7 +279,7 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
 
 def info(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text('*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that comes up to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n*minimum=X:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years. \n*If I dont respond:* If I am creating an analysis, please wait for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius. Shoutout to them!', parse_mode="Markdown")
+    update.message.reply_text('*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that i provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n*minimum=X:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years. \n*Feature parts:* I cant distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n*If I dont respond:* If I am creating an analysis, please wait for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius. Shoutout to them.', parse_mode="Markdown")
     update.message.reply_text(f'Send /start anytime to (re-)start.')
 
     return ConversationHandler.END
@@ -387,14 +387,15 @@ def clean_dictionaries():
 def make_artist_reply_keyboard(artist_suggestions):
     custom_keyboard = []
     custom_keyboard_row_draft = []
-    if len(artist_suggestions) == 1:
-        custom_keyboard.append([artist_suggestions[0]['name']])
     for i, suggestion in enumerate(artist_suggestions):
         custom_keyboard_row_draft.append(suggestion["name"])
         if i % 2 == 1:
             custom_keyboard.append(custom_keyboard_row_draft)
             custom_keyboard_row_draft = []
-    custom_keyboard.append(["None of those"])
+    if len(artist_suggestions) % 2 == 1:
+        custom_keyboard.append([artist_suggestions[-1]["name"], "❌ None of those"])
+    else:
+        custom_keyboard.append(["❌ None of those"])
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
     return reply_markup
 
@@ -404,8 +405,6 @@ def get_artist_search_results(artist_search_str):
     artist_suggestions = my_genius_scraper.get_artist_name_url_id_of_first_4(artist_search_str)
     if len(artist_suggestions) > 8:
         artist_suggestions = artist_suggestions[:8]
-    elif len(artist_suggestions) > 1 and len(artist_suggestions) % 2 == 1:
-        del artist_suggestions[-1]
     return artist_suggestions
 
 
@@ -434,7 +433,7 @@ def set_minimum_n_per_year(input, update, keyword_or_artist):
             minimum_n_per_year = 1
         if minimum_n_per_year > 0:
             request_dictionary[update.message.chat.id].minimum_n_per_year = minimum_n_per_year
-            update.message.reply_text(f'Graph will only have data points for years with at least n={minimum_n_per_year} songs. Add another {keyword_or_artist} or send /analyze to start analysis.')
+            update.message.reply_text(f'Graph will only have data points for years with at least {minimum_n_per_year} total songs. Add another {keyword_or_artist} or send /analyze to start analysis.')
             return
 
     update.message.reply_text(f'Please enter a number (1 or higher) as minimum. Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
