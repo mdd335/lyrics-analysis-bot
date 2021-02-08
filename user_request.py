@@ -10,6 +10,8 @@ class User_request:
 
         self.artists = []
 
+        self.custom_year_span = False
+
         self.year_start = None
 
         self.year_end = None

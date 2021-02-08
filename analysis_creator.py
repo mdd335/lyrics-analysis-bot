@@ -32,6 +32,16 @@ class Analysis_creator:
                 print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary')
                 print()
 
+        # make year span
+        if not request.custom_year_span:
+            years = []
+            for artist in request.artists:
+                for song in artist.songs_list:
+                    if isinstance(song.year, int) and song.year not in years:
+                        years.append(song.year)
+            request.year_start = min(years)
+            request.year_end = max(years)
+
         # Get data analysis list
         my_data_analyzer = Data_analyzer()
         data_list = my_data_analyzer.make_data_list(request)

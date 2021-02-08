@@ -14,19 +14,16 @@ import os
 PORT = int(os.environ.get('PORT', 5000))
 
 # Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 current_year = datetime.datetime.now().year
 
-METHOD, ARTIST_OA, ARTIST_CONF_OA, YEAR_START_OA, YEAR_END_OA, KEYWORD_OA, ANALYSIS_OA, KEYWORD_OK, YEAR_START_OK, YEAR_END_OK, ARTIST_OK, ARTIST_CONF_OK, ANALYSIS_OK = range(13)
+METHOD, ARTIST_OA, ARTIST_CONF_OA, KEYWORD_OA, ANALYSIS_OA, KEYWORD_OK, ARTIST_OK, ARTIST_CONF_OK, ANALYSIS_OK = range(9)
 
 request_dictionary = {}
 artist_list = []
 
-# TODO: add profile pictures
 # TODO: several artists as one (AKAs)
 
 
@@ -34,8 +31,8 @@ def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     reply_markup = ReplyKeyboardRemove()
-    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s), keyword(s) and a time span, I will analyze the artists lyrics on [Genius](www.genius.com) and create stats about how often they contain the keyword(s). See profile pictures for examples. Send /info for more detailed info. Send /start anytime to (re-)start.", parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
-    update.message.reply_text("To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
+    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s) and keyword(s), I will analyze the artists lyrics on [Genius](www.genius.com) and create stats about how often they contain the keyword(s). Send /info for more detailed info. Send /example for examples. Send /start anytime to restart.", parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+    update.message.reply_text("To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
     return METHOD
 
 
@@ -59,7 +56,7 @@ def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
     return ARTIST_CONF_OA
 
 
-def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
+def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
 
     # Check artist confirmation
     artist_confirmation_str = update.message.text
@@ -75,36 +72,8 @@ def choose_year_start_oa(update: Update, context: CallbackContext) -> int:
     else:
         add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
 
-    # Ask for start year
-    update.message.reply_text(f'Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.', reply_markup=reply_markup)
-    return YEAR_START_OA
-
-
-def choose_year_end_oa(update: Update, context: CallbackContext) -> int:
-
-    # Check start year
-    year_start = update.message.text
-    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
-        update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
-        return YEAR_START_OA
-    request_dictionary[update.message.chat.id].year_start = int(year_start)
-
-    # Ask for end year
-    update.message.reply_text(f'Next, please choose the end year.')
-    return YEAR_END_OA
-
-
-def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
-
-    # Check end year
-    year_end = update.message.text
-    if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
-        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
-        return YEAR_END_OA
-    request_dictionary[update.message.chat.id].year_end = int(year_end)
-
     # Ask for first keyword
-    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first keyword to analyze (no case sensitivity).')
+    update.message.reply_text(f'Next, please choose the first keyword to analyze (no case sensitivity).')
     return KEYWORD_OA
 
 
@@ -114,6 +83,11 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
     # Check for minimum=X input
     if keyword.startswith("minimum="):
         set_minimum_n_per_year(keyword, update, "keyword")
+        return ANALYSIS_OA
+
+    # Check for years=X input
+    if keyword.startswith("years="):
+        set_year_span(keyword, update, "keyword")
         return ANALYSIS_OA
 
     # Check spelling and type (OR?) of input. If correct, add to request.keywords
@@ -146,12 +120,13 @@ def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
     return KEYWORD_OK
 
 
-def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
+def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
 
     # Check spelling and type (OR?) of input. If correct, add to request.keywords and create keyword_str
     keyword = update.message.text.lower()
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
-        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        update.message.reply_text(
+            f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
         return KEYWORD_OK
     elif "/" in keyword:
         request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
@@ -160,36 +135,8 @@ def choose_year_start_ok(update: Update, context: CallbackContext) -> int:
         request_dictionary[update.message.chat.id].keywords.append(keyword)
         keyword_str = '"' + keyword + '"'
 
-    # Answer
-    update.message.reply_text(f'I will analyze {keyword_str}. Next, I need a time span that you are most interested in, e.g. 2010 - 2020. Please choose the start year.')
-    return YEAR_START_OK
-
-
-def choose_year_end_ok(update: Update, context: CallbackContext) -> int:
-
-    # Check start year
-    year_start = update.message.text
-    if not year_start.isnumeric() or (1899 >= int(year_start) or int(year_start) > current_year):
-        update.message.reply_text(f'Please enter a start year between 1900 and {current_year}.')
-        return YEAR_START_OK
-    request_dictionary[update.message.chat.id].year_start = int(year_start)
-
-    # Ask for end year
-    update.message.reply_text(f'Please choose the end year.')
-    return YEAR_END_OK
-
-
-def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
-
-    # Check end year
-    year_end = update.message.text
-    if not year_end.isnumeric() or (request_dictionary[update.message.chat.id].year_start > int(year_end) or int(year_end) > current_year):
-        update.message.reply_text(f'Please enter an end year between {request_dictionary[update.message.chat.id].year_start} (start year) and {current_year}.')
-        return YEAR_END_OK
-    request_dictionary[update.message.chat.id].year_end = int(year_end)
-
     # Ask for first artist
-    update.message.reply_text(f'I will analyze the years from {request_dictionary[update.message.chat.id].year_start} to {year_end}. Next, please choose the first artist to analyze.')
+    update.message.reply_text(f'I will analyze {keyword_str}. Next, please choose the first artist to analyze.')
     return ARTIST_OK
 
 
@@ -199,6 +146,11 @@ def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
     # Check for minimum=X input
     if artist_search_str.lower().startswith("minimum="):
         set_minimum_n_per_year(artist_search_str, update, "artist")
+        return ANALYSIS_OK
+
+    # Check for years=X input
+    if artist_search_str.lower().startswith("years="):
+        set_year_span(artist_search_str, update, "artist")
         return ANALYSIS_OK
 
     # Otherwise, show artist suggestions
@@ -281,7 +233,7 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
 def info_start(update: Update, context: CallbackContext) -> int:
     send_info(update)
-    update.message.reply_text("Send /example for examples. To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
+    update.message.reply_text("Send /example for examples. To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
 
     return METHOD
 
@@ -294,10 +246,10 @@ def info_end(update: Update, context: CallbackContext) -> int:
 
 
 def example(update: Update, context: CallbackContext) -> int:
-    photo_list = [InputMediaPhoto(open('examples/kanye.jpg', 'rb')), InputMediaPhoto(open('examples/bitch.jpg', 'rb')), InputMediaPhoto(open('examples/gucci_mane.jpg', 'rb'))]
+    photo_list = [InputMediaPhoto(open('examples/kanye.jpg', 'rb')), InputMediaPhoto(open('examples/love.jpg', 'rb')), InputMediaPhoto(open('examples/gucci_mane.jpg', 'rb')), InputMediaPhoto(open('examples/bitch.jpg', 'rb'))]
     context.bot.send_media_group(chat_id=update.message.chat.id, media=photo_list)
 
-    update.message.reply_text("Send /info for more detailed info about the bot. To start, please choose a method: send /oneartist to analyze 1 artist (compare usage of up to 10 keywords) or /onekeyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
+    update.message.reply_text("Send /info for more detailed info about the bot. To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
 
     return METHOD
 
@@ -322,22 +274,14 @@ def main() -> None:
                 CommandHandler('start', start),
                 CommandHandler('info', info_start),
                 CommandHandler('example', example),
-                CommandHandler('oneartist', choose_artist_oa),
-                CommandHandler('onekeyword', choose_keyword_ok)
+                CommandHandler('artist', choose_artist_oa),
+                CommandHandler('keyword', choose_keyword_ok)
             ],
             ARTIST_OA: [
                 CommandHandler('start', start),
                 MessageHandler(Filters.text, confirm_artist_oa)
             ],
             ARTIST_CONF_OA: [
-                CommandHandler('start', start),
-                MessageHandler(Filters.text, choose_year_start_oa)
-            ],
-            YEAR_START_OA: [
-                CommandHandler('start', start),
-                MessageHandler(Filters.text, choose_year_end_oa)
-            ],
-            YEAR_END_OA: [
                 CommandHandler('start', start),
                 MessageHandler(Filters.text, choose_first_keyword_oa)
             ],
@@ -351,14 +295,6 @@ def main() -> None:
                 MessageHandler(Filters.text, add_keywords_oa)
             ],
             KEYWORD_OK: [
-                CommandHandler('start', start),
-                MessageHandler(Filters.text, choose_year_start_ok)
-            ],
-            YEAR_START_OK: [
-                CommandHandler('start', start),
-                MessageHandler(Filters.text, choose_year_end_ok)
-            ],
-            YEAR_END_OK: [
                 CommandHandler('start', start),
                 MessageHandler(Filters.text, choose_first_artist_ok)
             ],
@@ -395,6 +331,7 @@ def main() -> None:
 
 
 def clean_dictionaries():
+    # TODO: do not delete newest artists/requests when cleaning
     if len(artist_list) > 1000:
         artist_list.clear()
 
@@ -451,10 +388,29 @@ def set_minimum_n_per_year(input, update, keyword_or_artist):
             minimum_n_per_year = 1
         if minimum_n_per_year > 0:
             request_dictionary[update.message.chat.id].minimum_n_per_year = minimum_n_per_year
-            update.message.reply_text(f'Graph will only have data points for years with at least {minimum_n_per_year} total songs. Add another {keyword_or_artist} or send /analyze to start analysis.')
+            update.message.reply_text(f'Graph will have data points for years with at least {minimum_n_per_year} total songs. Add another {keyword_or_artist} or send /analyze to start analysis.')
             return
 
     update.message.reply_text(f'Please enter a number (1 or higher) as minimum. Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
+
+
+def set_year_span(input, update, keyword_or_artist):
+    start_index = input.lower().find('years=')
+    year_start_input = input.lower()[start_index + 6: start_index + 10]
+    year_end_input = input.lower()[start_index + 11: start_index + 15]
+
+    try:
+        if year_start_input.isnumeric() and 1900 <= int(year_start_input) < current_year:
+            if year_end_input.isnumeric() and int(year_start_input) < int(year_end_input) <= current_year:
+                request_dictionary[update.message.chat.id].custom_year_span = True
+                request_dictionary[update.message.chat.id].year_start = int(year_start_input)
+                request_dictionary[update.message.chat.id].year_end = int(year_end_input)
+                update.message.reply_text(f'I will analyze the years from {year_start_input} to {year_end_input}. Add another {keyword_or_artist} or send /analyze to start analysis.')
+                return
+    except:
+        print("Error with year span input")
+
+    update.message.reply_text(f'Please enter a year span between 1900 and today, e.g. "years=2010-2020". Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
 
 
 def send_info(update):
@@ -462,7 +418,8 @@ def send_info(update):
         '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
         '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that i provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
         '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
-        '*minimum=X:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years. \n'
+        '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
+        '*years=:* By default, I include all years in the graph and table in which at least one of the artist(s) has at least 5 (or minimum=X) total songs. If you are only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
         '*Feature parts:* I cant distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
         '*If I dont respond:* If I am creating an analysis, please wait for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n'
         '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n'
