@@ -31,7 +31,7 @@ def start(update: Update, context: CallbackContext) -> int:
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     reply_markup = ReplyKeyboardRemove()
-    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s) and keyword(s), I will analyze the artists lyrics on [Genius](www.genius.com) and create stats about how often they contain the keyword(s). Send /info for more detailed info. Send /example for examples. Send /start anytime to restart.", parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+    update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s) and keyword(s), I will analyze the artists lyrics on [Genius](www.genius.com) and create statistics about how often they contain the keyword(s). Send /info for more detailed info. Send /example for examples. Send /start anytime to restart.", parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
     update.message.reply_text("To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
     return METHOD
 
@@ -125,8 +125,7 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
     # Check spelling and type (OR?) of input. If correct, add to request.keywords and create keyword_str
     keyword = update.message.text.lower()
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
-        update.message.reply_text(
-            f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
         return KEYWORD_OK
     elif "/" in keyword:
         request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
@@ -176,8 +175,7 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
         if "None of those" in artist_confirmation_str:
             update.message.reply_text(f'Try spelling the artist exactly as it is spelled on [Genius](www.genius.com). If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
             return ARTIST_OK
-        elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in
-                     request_dictionary[update.message.chat.id].artist_drafts):
+        elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in request_dictionary[update.message.chat.id].artist_drafts):
             update.message.reply_text(f'Something didnt work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
             return ARTIST_OK
         else:
@@ -199,7 +197,7 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
 def get_analysis(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 20min, there was probably an error. Please try again later or try other artists/keywords. Send /start to restart.)')
 
-    # Add songs list(s) to artist(s) if they are already in artist list
+    # Add songs list(s) to artist(s) if they are already in artist_list
     artists = request_dictionary[update.message.chat.id].artists
     for artist_new in artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
@@ -240,7 +238,7 @@ def info_start(update: Update, context: CallbackContext) -> int:
 
 def info_end(update: Update, context: CallbackContext) -> int:
     send_info(update)
-    update.message.reply_text(f'Send /start anytime to (re-)start.')
+    update.message.reply_text(f'Send /start anytime to restart.')
 
     return ConversationHandler.END
 
@@ -416,19 +414,16 @@ def set_year_span(input, update, keyword_or_artist):
 def send_info(update):
     update.message.reply_text(
         '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
-        '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that i provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
-        '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
+        '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
+        '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
         '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
         '*years=:* By default, I include all years in the graph and table in which at least one of the artist(s) has at least 5 (or minimum=X) total songs. If you are only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
         '*Feature parts:* I cant distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
-        '*If I dont respond:* If I am creating an analysis, please wait for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n'
+        '*If I dont respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n'
         '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n'
-        '*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius. Shoutout to them.',
+        '*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius, shoutout to them.',
         parse_mode="Markdown")
 
 
 if __name__ == '__main__':
     main()
-
-
-
