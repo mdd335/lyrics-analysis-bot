@@ -227,7 +227,7 @@ class Genius_scraper:
         if release_year is not None:
             try:
                 release_year_int = int(release_year)
-                if 1900 < release_year_int < datetime.datetime.now().year:
+                if 1800 < release_year_int < datetime.datetime.now().year:
                     # print(f"Found year: {release_year}, ", end='')
                     return release_year_int
                 else:

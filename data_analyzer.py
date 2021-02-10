@@ -12,7 +12,10 @@ class Data_analyzer:
             for keyword in request.keywords:
                 self.add_keyword_to_artist_songs_list(artist.songs_list, keyword)
 
-        # Make year_range
+        # Set year_start and year_end if not custom
+        self.set_year_start_and_year_end_if_not_custom(request)
+
+        # make year range
         year_range = list(range(request.year_start, request.year_end + 1))
 
         # Make artists_names
@@ -32,7 +35,9 @@ class Data_analyzer:
         # Analyze each year in year range
         for year in year_range:
             songs_list_year = [song for song in all_songs_list if song.year == year]
-            data_list.append(self.make_data_row(songs_list_year, artists_names, request.keywords, year, request.method))
+            row_object = self.make_data_row(songs_list_year, artists_names, request.keywords, year, request.method)
+            if row_object["songs total"] > 0:
+                data_list.append(row_object)
 
         if request.custom_year_span:
             # Analyze whole year range
@@ -53,6 +58,16 @@ class Data_analyzer:
         data_list.append(total_object)
 
         return data_list
+
+    def set_year_start_and_year_end_if_not_custom(self, request):
+        if not request.custom_year_span:
+            years = []
+            for artist in request.artists:
+                for song in artist.songs_list:
+                    if isinstance(song.year, int) and song.year not in years:
+                        years.append(song.year)
+            request.year_start = min(years)
+            request.year_end = max(years)
 
     def make_data_row(self, songs_list, artists_names, keywords, title, method):
 

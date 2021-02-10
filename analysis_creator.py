@@ -32,16 +32,6 @@ class Analysis_creator:
                 print(f'Song list of {len(artist.songs_list)} songs by {artist.name} taken from artist_dictionary')
                 print()
 
-        # make year span
-        if not request.custom_year_span:
-            years = []
-            for artist in request.artists:
-                for song in artist.songs_list:
-                    if isinstance(song.year, int) and song.year not in years:
-                        years.append(song.year)
-            request.year_start = min(years)
-            request.year_end = max(years)
-
         # Get data analysis list
         my_data_analyzer = Data_analyzer()
         data_list = my_data_analyzer.make_data_list(request)
@@ -208,10 +198,10 @@ class Analysis_creator:
 
         if request.method == "one_artist":
             keywords_string = ' '.join([self.make_keyword_str_no_quotations(elem) for elem in request.keywords])
-            return f'Lyrics analysis {request.artists[0].name} {str(request.year_start)}-{str(request.year_end)} {keywords_string}.csv'
+            return f'Lyrics Stats - {request.artists[0].name} - {keywords_string}.csv'
         elif request.method == "one_keyword":
             artists_string = ' '.join([artist.name for artist in request.artists])
-            return f'Lyrics analysis {artists_string} {str(request.year_start)}-{str(request.year_start)} {self.make_keyword_str_no_quotations(request.keywords[0])}.csv'
+            return f'Lyrics Stats - {artists_string} - {self.make_keyword_str_no_quotations(request.keywords[0])}.csv'
 
     def make_keyword_str(self, keyword):
         # !! same method in data_analyzer !!
