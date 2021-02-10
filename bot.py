@@ -32,13 +32,13 @@ def start(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     reply_markup = ReplyKeyboardRemove()
     update.message.reply_text("Hey, I am the LyricsBot 🤠\nIf you tell me artist(s) and keyword(s), I will analyze the artists lyrics on [Genius](www.genius.com) and create statistics about how often they contain the keyword(s). Send /info for more detailed info. Send /example for examples. Send /start anytime to restart.", parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
-    update.message.reply_text("To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
+    update.message.reply_text("To begin, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
     return METHOD
 
 
 def choose_artist_oa(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].method = "one_artist"
-    update.message.reply_text("First, please tell me the artist you want to analyze.")
+    update.message.reply_text("Please tell me the artist you want to analyze.")
     return ARTIST_OA
 
 
@@ -73,7 +73,7 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
         add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
 
     # Ask for first keyword
-    update.message.reply_text(f'Next, please choose the first keyword to analyze (no case sensitivity).')
+    update.message.reply_text(f'Please choose the first keyword to analyze (no case sensitivity).')
     return KEYWORD_OA
 
 
@@ -116,7 +116,7 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
 
 def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].method = "one_keyword"
-    update.message.reply_text("First, please tell me the keyword you want to analyze (no case sensitivity).")
+    update.message.reply_text("Please tell me the keyword you want to analyze (no case sensitivity).")
     return KEYWORD_OK
 
 
@@ -417,7 +417,7 @@ def send_info(update):
         '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
         '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
         '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
-        '*years=:* By default, I include all years in the graph and table in which at least one of the artist(s) has at least 5 (or minimum=X) total songs. If you are only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
+        '*years=:* By default, I include all years in the table in which at least one of the artist(s) has at least one total songs and all years in the graph in which at least one artist has at least 5 (or minimum=X) songs. If you are instead only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
         '*Feature parts:* I cant distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
         '*If I dont respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n'
         '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n'
