@@ -9,7 +9,6 @@ from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InputMedi
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 from telegram.ext.dispatcher import run_async
 import os
-import pickle
 
 PORT = int(os.environ.get('PORT', 5000))
 

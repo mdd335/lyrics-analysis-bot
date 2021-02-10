@@ -43,30 +43,18 @@ class Genius_scraper:
         # Make url list from song return objects
         artist_songs_list = [Song("http://genius.com" + song["path"]) for song in song_return_objects_main_artist]
 
-        # Add HTMLs to artist_songs_list
-        self.add_htmls_to_songs_list(artist_songs_list)
-        songs_list_with_html = [song for song in artist_songs_list if song.html is not None]
-        print(f"Successfully downloaded {len(songs_list_with_html)} of {len(artist_songs_list)} HTMLs")
-        print()
+        # Get HTML and add song data to each song
+        if len(artist_songs_list) > 600:
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list[300:599], "301 - 600")
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list[600:], "601 - 900")
+        elif len(artist_songs_list) > 300:
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list[300:], "301 - 600")
+        else:
+            self.add_song_data_to_songs_list(artist_name, artist_songs_list, "(less than 300)")
 
-        # Add song data (title, artist, year, lyrics) to artist_songs_list
-        self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
-        print(f'Successfully found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
-        print()
-
-        # X times, if html download failed or no year found, try again
-        for _ in range(3):
-            songs_list_no_html_or_no_year = [song for song in artist_songs_list if song.html is None or song.year == "unknown year"]
-            self.add_htmls_to_songs_list(songs_list_no_html_or_no_year)
-            songs_list_with_html = [song for song in songs_list_no_html_or_no_year if song.html is not None]
-            self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
-            print(f'Successfully downloaded HTML and found year of another {len([song for song in songs_list_no_html_or_no_year if song.year != "unknown year"])} songs.')
-
-        print(f'END: Successfully found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
-
-        # Delete HTMLs from song objects
-        for song in artist_songs_list:
-            song.html = None
+        print(f'END: Successfully downloaded and found lyrics of {len([song for song in artist_songs_list if song.lyrics is not None])} songs, found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
 
         if len(artist_songs_list) < (len(song_return_objects_main_artist) * 0.9):
             return "Error"
@@ -131,21 +119,32 @@ class Genius_scraper:
 
         return songs
 
-    def add_htmls_to_songs_list(self, songs_list):
+    def add_song_data_to_songs_list(self, artist_name, songs_list, index):
 
-        print("Downloading HTMLs ...")
+        # Add HTMLs to songs
+        print(f"Downloading HTMLs {index}...")
+        self.get_htmls_aio(songs_list)
+        songs_list_with_html = [song for song in songs_list if song.html is not None]
+        #print(f"Successfully downloaded {len(songs_list_with_html)} of {len(songs_list)} HTMLs")
+        #print()
 
-        # Create html list from url list,
-        # splitting it up if more than 300 songs, because for some reasons aiohttp seems to struggle with bigger lists
-        if len(songs_list) > 600:
-            self.get_htmls_aio(songs_list[:299])
-            self.get_htmls_aio(songs_list[300:599])
-            self.get_htmls_aio(songs_list[600:])
-        elif len(songs_list) > 300:
-            self.get_htmls_aio(songs_list[:299])
-            self.get_htmls_aio(songs_list[300:])
-        else:
-            self.get_htmls_aio(songs_list)
+        # Add song data (title, artist, year, lyrics) to songs
+        print("Adding title, artist, year, lyrics ...")
+        self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
+        #print(f'Successfully found year of {len([song for song in songs_list if song.year != "unknown year"])} songs.')
+        #print()
+
+        # X times, if html download failed or no year found, try again
+        for _ in range(3):
+            songs_list_no_html_or_no_year = [song for song in songs_list if song.html is None or song.year == "unknown year"]
+            self.get_htmls_aio(songs_list_no_html_or_no_year)
+            songs_list_with_html = [song for song in songs_list_no_html_or_no_year if song.html is not None]
+            self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
+            print(f'Successfully downloaded and found year of another {len([song for song in songs_list_no_html_or_no_year if song.year != "unknown year"])} songs.')
+
+        # Delete HTMLs from song objects
+        for song in songs_list:
+            song.html = None
 
     def get_htmls_aio(self, songs_list):
 
@@ -175,7 +174,6 @@ class Genius_scraper:
         return html_list
 
     def add_title_artist_year_lyrics_to_songs_list(self, artist_name, artist_songs_list):
-        print("Adding title, artist, year, lyrics ...")
         for song in artist_songs_list:
             song.title = self.get_song_title(song.html)
             song.artist = artist_name
