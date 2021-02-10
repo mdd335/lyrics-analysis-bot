@@ -64,6 +64,10 @@ class Genius_scraper:
 
         print(f'END: Successfully found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
 
+        # Delete HTMLs from song objects
+        for song in artist_songs_list:
+            song.html = None
+
         if len(artist_songs_list) < (len(song_return_objects_main_artist) * 0.9):
             return "Error"
 

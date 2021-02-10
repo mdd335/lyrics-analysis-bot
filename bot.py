@@ -9,7 +9,7 @@ from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InputMedi
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 from telegram.ext.dispatcher import run_async
 import os
-
+import pickle
 
 PORT = int(os.environ.get('PORT', 5000))
 
@@ -197,9 +197,8 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
 def get_analysis(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 20min, there was probably an error. Please try again later or try other artists/keywords. Send /start to restart.)')
 
-    # Add songs list(s) to artist(s) if they are already in artist_list
-    artists = request_dictionary[update.message.chat.id].artists
-    for artist_new in artists:
+    # Load saved artist files if they exist
+    for artist_new in request_dictionary[update.message.chat.id].artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is not None:
             artist_new.songs_list = artist_from_list.songs_list
@@ -208,8 +207,8 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
     my_analysis_creator = Analysis_creator()
     img_file, csv_file, info_string = my_analysis_creator.create_analysis(request_dictionary[update.message.chat.id])
 
-    # Store new artists in artist_list
-    for artist_new in artists:
+    # Save artists as file
+    for artist_new in request_dictionary[update.message.chat.id].artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is None:
             artist_list.append(artist_new)
@@ -240,6 +239,7 @@ def info_end(update: Update, context: CallbackContext) -> int:
     send_info(update)
     update.message.reply_text(f'Send /start anytime to restart.')
 
+    del request_dictionary[update.message.chat.id]
     return ConversationHandler.END
 
 
@@ -329,11 +329,11 @@ def main() -> None:
 
 
 def clean_dictionaries():
-    # TODO: do not delete newest artists/requests when cleaning
-    if len(artist_list) > 1000:
-        artist_list.clear()
+    if len(artist_list) > 100:
+        del artist_list[:10]
 
     if len(request_dictionary) > 1000:
+        # TODO: do not delete newest requests when cleaning
         request_dictionary.clear()
 
 
