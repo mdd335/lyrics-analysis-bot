@@ -23,8 +23,8 @@ class Analysis_creator:
                 # Get songs from Genius
                 my_genius_scraper = Genius_scraper()
                 artist.songs_list = my_genius_scraper.get_artist_songs_list(artist.id, artist.name)
-                print()
-                print(f'Scraped lyrics of {len(artist.songs_list)} songs by {artist.name}')
+                # print()
+                # print(f'Scraped lyrics of {len(artist.songs_list)} songs by {artist.name}')
                 print()
             else:
                 # Take songs from artist_dictionary
@@ -51,7 +51,8 @@ class Analysis_creator:
 
         # Make info string
         info_string = ""
-        info_string += self.make_years_without_lyrics_str(data_list)
+        if request.custom_year_span:
+            info_string += self.make_years_without_lyrics_str(data_list)
         info_string += self.make_example_str(data_list, request)
         print("Created info string")
 
@@ -83,7 +84,7 @@ class Analysis_creator:
                     return f'Example: In {data_row["Year"]}, {data_row["songs with " + self.make_keyword_str(request.keywords[0])]} of the {data_row["songs total"]} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(data_row["% with " + self.make_keyword_str(request.keywords[0])])} %.'
         elif request.method == "one_keyword":
             for data_row in data_list:
-                if data_row["songs total"] != 0:
+                if data_row[request.artists[0].name + ":\nsongs total"] != 0:
                     info_songs_with_keyword = data_row[request.artists[0].name + ":\nsongs with " + self.make_keyword_str(request.keywords[0])]
                     info_songs_total = data_row[request.artists[0].name + ":\nsongs total"]
                     info_percent_with_keyword = data_row[request.artists[0].name + ":\n% with " + self.make_keyword_str(request.keywords[0])]

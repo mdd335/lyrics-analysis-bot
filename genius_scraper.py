@@ -6,7 +6,7 @@ import re
 import asyncio
 import aiohttp
 import random
-
+import datetime
 
 class Genius_scraper:
 
@@ -227,9 +227,11 @@ class Genius_scraper:
         if release_year is not None:
             try:
                 release_year_int = int(release_year)
-                if 1600 < release_year_int < 2100:
+                if 1900 < release_year_int < datetime.datetime.now().year:
                     # print(f"Found year: {release_year}, ", end='')
                     return release_year_int
+                else:
+                    return "unknown year"
             except:
                 # print("No year found, ", end='')
                 return "unknown year"
