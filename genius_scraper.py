@@ -8,6 +8,7 @@ import aiohttp
 import random
 import datetime
 
+
 class Genius_scraper:
 
     def __init__(self):
@@ -61,11 +62,11 @@ class Genius_scraper:
 
         return [song for song in artist_songs_list if song.lyrics is not None]
 
-    def get_artist_name_url_id_of_first_4(self, artist_search_str):
-        """Gets the first 4 artists of the search results for a search string (with name, url and id)."""
-        path ="search"
-        params = {'q' : artist_search_str}
-        data = self.get_json(path = path, params = params)
+    def get_artists_name_url_id(self, artist_search_str):
+        """Gets artists from the genius search results for a search string (with name, url and id)."""
+        path = "search"
+        params = {'q': artist_search_str}
+        data = self.get_json(path=path, params=params)
 
         artist_suggestions = []
         for artist in data['response']['hits']:
@@ -79,10 +80,10 @@ class Genius_scraper:
         return artist_suggestions
 
     def get_artist_name_url_id(self, artist_search_str):
-        """Gets the name, url and id of an artist from Genius."""
-        path ="search"
-        params = {'q' : artist_search_str}
-        data = self.get_json(path = path, params = params)
+        """Gets first artist from the genius search results for a search string (with name, url and id)."""
+        path = "search"
+        params = {'q': artist_search_str}
+        data = self.get_json(path=path, params=params)
         artist_name = data['response']['hits'][0]['result']['primary_artist']['name']
         artist_url = data['response']['hits'][0]['result']['primary_artist']['url']
         artist_id = data['response']['hits'][0]['result']['primary_artist']['id']
@@ -92,15 +93,15 @@ class Genius_scraper:
         """Get all the song ids from an artist."""
         current_page = 1
         next_page = True
-        songs = [] # to store final song ids
+        songs = []
 
         print("Scraping pages ...")
 
         while next_page:
             try:
                 path = "artists/{}/songs/".format(artist_id)
-                params = {'page': current_page} # the current page
-                data = self.get_json(path=path, params=params) # get json of songs
+                params = {'page': current_page}
+                data = self.get_json(path=path, params=params)
 
                 page_songs = data['response']['songs']
                 if page_songs:
@@ -120,19 +121,20 @@ class Genius_scraper:
         return songs
 
     def add_song_data_to_songs_list(self, artist_name, songs_list, index):
+        """Edit a list of songs: Download HTMLs, exctract title, year and lyrics and add them to songs"""
 
         # Add HTMLs to songs
         print(f"Downloading HTMLs {index}...")
         self.get_htmls_aio(songs_list)
         songs_list_with_html = [song for song in songs_list if song.html is not None]
-        #print(f"Successfully downloaded {len(songs_list_with_html)} of {len(songs_list)} HTMLs")
-        #print()
+        # print(f"Successfully downloaded {len(songs_list_with_html)} of {len(songs_list)} HTMLs")
+        # print()
 
         # Add song data (title, artist, year, lyrics) to songs
         print("Adding title, artist, year, lyrics ...")
         self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
-        #print(f'Successfully found year of {len([song for song in songs_list if song.year != "unknown year"])} songs.')
-        #print()
+        # print(f'Successfully found year of {len([song for song in songs_list if song.year != "unknown year"])} songs.')
+        # print()
 
         # X times, if html download failed or no year found, try again
         for _ in range(3):
@@ -147,6 +149,7 @@ class Genius_scraper:
             song.html = None
 
     def get_htmls_aio(self, songs_list):
+        """Edit a list of songs: Download and add HTMLs async"""
 
         async def get(song):
             try:
@@ -163,18 +166,9 @@ class Genius_scraper:
 
         asyncio.run(main(songs_list))
 
-    def get_htmls(self, url_list):
-        html_list = []
-
-        for url in url_list:
-            page = requests.get(url)
-            html_list.append(BeautifulSoup(page.text, "html.parser"))
-            print(f'Downloaded html of {url}')
-
-        return html_list
-
-    def add_title_artist_year_lyrics_to_songs_list(self, artist_name, artist_songs_list):
-        for song in artist_songs_list:
+    def add_title_artist_year_lyrics_to_songs_list(self, artist_name, songs_list):
+        """Edit songs list: Add .artist and add .title, .year, .lyrics based on .html"""
+        for song in songs_list:
             song.title = self.get_song_title(song.html)
             song.artist = artist_name
             song.year = self.get_song_year(song.html)
@@ -195,6 +189,7 @@ class Genius_scraper:
         return song_title_string
 
     def get_song_year(self, html):
+        """Extracts the song year from an html"""
         try:
             # Try to find release date in span
             release_date_element = html.find("span", string="Release Date")
@@ -251,12 +246,6 @@ class Genius_scraper:
             except:
                 return None
 
-        '''
-        if len(song_lyrics_string) < 20:
-            print("Unrealistically short lyrics found")
-            return None
-        '''
-
         if song_lyrics_string is None:
             # print("No lyrics found")
             return None
@@ -282,22 +271,22 @@ class Genius_scraper:
         lyrics = lyrics.replace("\'", "")
         lyrics = lyrics.replace("#", " ")
 
+        # Remove text in squared brackets
         skip1c = 0
-        lyrics_formated = ""
+        lyrics_formatted = ""
         for i in lyrics:
             if i == '[':
                 skip1c += 1
             elif i == ']' and skip1c > 0:
                 skip1c -= 1
             elif skip1c == 0:
-                lyrics_formated += i
+                lyrics_formatted += i
 
-        while '  ' in lyrics_formated:
-            lyrics_formated = lyrics_formated.replace('  ', ' ')
+        # Remove duplicate blank spaces
+        while '  ' in lyrics_formatted:
+            lyrics_formatted = lyrics_formatted.replace('  ', ' ')
 
-        lyrics_formated = lyrics_formated.lower()
-
-        return lyrics_formated
+        return lyrics_formatted.lower()
 
     def get_json(self, path, params=None, headers=None):
         """Send request and get response in json format."""

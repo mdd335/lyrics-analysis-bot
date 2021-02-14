@@ -3,9 +3,8 @@ class Data_analyzer:
     def __init__(self):
         self.test = "test"
 
-
     def make_data_list(self, request):
-        """Returns data list of percentages by years for one keyword, several artists"""
+        """Returns data list (including data for each year and total) based on method, artist(s), keyword(s)"""
 
         # Add keyword frequencies to artist_songs_lists
         for artist in request.artists:
@@ -60,6 +59,7 @@ class Data_analyzer:
         return data_list
 
     def set_year_start_and_year_end_if_not_custom(self, request):
+        """Set request.year_start and .year_end if they are not already custom set by user"""
         if not request.custom_year_span:
             years = []
             for artist in request.artists:
@@ -70,6 +70,7 @@ class Data_analyzer:
             request.year_end = max(years)
 
     def make_data_row(self, songs_list, artists_names, keywords, title, method):
+        """Make one row in the data list, containing the data for one year or total"""
 
         row_object = {"Year": title}
 
@@ -98,6 +99,7 @@ class Data_analyzer:
         return row_object
 
     def make_percent_and_n_cells(self, keyword, num_of_songs, row_object, songs_list, artist_str_for_cell_title=""):
+        """Make two cells in one row of the data list: '% with' and 'n with'"""
 
         # Check number of songs with keyword
         num_of_songs_with_keyword = self.get_num_of_songs_with_keyword_in_songs_list(keyword, songs_list)
@@ -110,6 +112,7 @@ class Data_analyzer:
         row_object[artist_str_for_cell_title + "songs with " + self.make_keyword_str(keyword)] = num_of_songs_with_keyword
 
     def add_keyword_to_artist_songs_list(self, artist_songs_list, keyword):
+        """Check if a keyword is in the lyrics of each song in an artist_songs_list, save the result in song.keywords"""
 
         for song in artist_songs_list:
 
@@ -123,6 +126,7 @@ class Data_analyzer:
                         song.keywords[single_keyword] = (song.lyrics.find(" " + single_keyword + " ") != -1)
 
     def make_keyword_str(self, keyword):
+        """Returns a string for one keyword"""
         # !! same method in analysis_creator !!
 
         if isinstance(keyword, str):
@@ -133,6 +137,7 @@ class Data_analyzer:
         return keyword_str
 
     def get_num_of_songs_with_keyword_in_songs_list(self, keyword, songs_list):
+        """Count and return the number of songs in a songs_list that contain a keyword"""
         num_of_songs_with_keyword = 0
 
         if isinstance(keyword, str):
@@ -146,4 +151,3 @@ class Data_analyzer:
                     num_of_songs_with_keyword += 1
 
         return num_of_songs_with_keyword
-

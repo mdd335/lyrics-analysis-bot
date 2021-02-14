@@ -13,6 +13,7 @@ class Analysis_creator:
         self.test = "test"
 
     def create_analysis(self, request):
+        """Create an analysis and return image, CSV and info string"""
 
         print(f'CREATING ANALYSIS: {request.method}, artists(s): {[artist.name for artist in request.artists]}, keyword(s): {request.keywords}')
         print()
@@ -61,6 +62,7 @@ class Analysis_creator:
         return img_file, csv_file, info_string
 
     def make_years_without_lyrics_str(self, data_list):
+        """Make a string stating the years in which no lyrics at all were found, based on data list"""
         years_without_lyrics_str = [str(data_row["Year"]) for data_row in data_list if isinstance(data_row["Year"], int) and data_row["songs total"] == 0]
         if len(years_without_lyrics_str) > 0:
             return f"No lyrics found for {', '.join(years_without_lyrics_str)}.\n"
@@ -68,6 +70,7 @@ class Analysis_creator:
             return ""
 
     def make_example_str(self, data_list, request):
+        """Make example string explaining the graph, based on data list"""
         if request.method == "one_artist":
             for data_row in data_list:
                 if data_row["songs total"] != 0:
@@ -81,6 +84,7 @@ class Analysis_creator:
                     return f'Example: In {data_row["Year"]}, {info_songs_with_keyword} of the {info_songs_total} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(info_percent_with_keyword)} %.'
 
     def make_img(self, artist_or_keyword, keywords_or_artists, data_list, method, minimum_n_per_year):
+        """Make graph image file"""
 
         data_list_only_years = [data_row for data_row in data_list if isinstance(data_row["Year"], int)]
 
@@ -151,6 +155,7 @@ class Analysis_creator:
         return img_file
 
     def make_x_and_y_lists_for_plot(self, artist_or_keyword, data_list_only_years, keyword_or_artist, method, minimum_n_per_year):
+        """Create lists with x and y values for one keyword/artist"""
         x = []
         y = []
         for data_row in data_list_only_years:
@@ -165,6 +170,7 @@ class Analysis_creator:
         return x, y
 
     def make_img_title_str(self, artist_or_keyword, keywords_or_artists, method):
+        """Make title string for the graph"""
         if method == "one_artist":
             if len(keywords_or_artists) > 1:
                 return f'% of {artist_or_keyword} songs with different keywords in their lyrics, per year'
@@ -177,6 +183,7 @@ class Analysis_creator:
                 return f'% of {keywords_or_artists[0]} songs with {self.make_keyword_str(artist_or_keyword)} in their lyrics, per year'
 
     def make_csv(self, data_list):
+        """Make CSV file containing the table"""
 
         # Make 2D list
         list_for_csv = [list(data_list[0].keys())]
@@ -195,6 +202,7 @@ class Analysis_creator:
         return csv_file
 
     def make_csv_name_string(self, request):
+        """Make name string for the CSV file"""
 
         if request.method == "one_artist":
             keywords_string = ' '.join([self.make_keyword_str_no_quotations(elem) for elem in request.keywords])
@@ -204,6 +212,7 @@ class Analysis_creator:
             return f'Lyrics Stats - {artists_string} - {self.make_keyword_str_no_quotations(request.keywords[0])}.csv'
 
     def make_keyword_str(self, keyword):
+        """Returns a string for one keyword"""
         # !! same method in data_analyzer !!
 
         if isinstance(keyword, str):
@@ -214,6 +223,7 @@ class Analysis_creator:
         return keyword_str
 
     def make_keyword_str_no_quotations(self, keyword):
+        """Returns a string for one keyword without using quotation marks or OR"""
 
         if isinstance(keyword, str):
             keyword_str = keyword

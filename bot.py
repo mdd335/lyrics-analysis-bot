@@ -27,6 +27,7 @@ artist_list = []
 
 
 def start(update: Update, context: CallbackContext) -> int:
+    """Start of conversation: Send basic info, ask for  method"""
     clean_dictionaries()
     request_dictionary[update.message.chat.id] = User_request(update.message.chat.id)
     reply_markup = ReplyKeyboardRemove()
@@ -36,12 +37,14 @@ def start(update: Update, context: CallbackContext) -> int:
 
 
 def choose_artist_oa(update: Update, context: CallbackContext) -> int:
+    """Method one_artist: Set method, ask for artist"""
     request_dictionary[update.message.chat.id].method = "one_artist"
     update.message.reply_text("Please tell me the artist you want to analyze.")
     return ARTIST_OA
 
 
 def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
+    """Method one_artist: Get artist search results from genius and make artist suggestions"""
     artist_search_str = update.message.text
     artist_suggestions = get_artist_search_results(artist_search_str)
     if len(artist_suggestions) == 0:
@@ -56,6 +59,7 @@ def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
 
 
 def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
+    """Method one_artist: Set artist, ask for first keyword"""
 
     # Check artist confirmation
     artist_confirmation_str = update.message.text
@@ -77,6 +81,7 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
 
 
 def add_keywords_oa(update: Update, context: CallbackContext) -> int:
+    """Method one_artist: Set keyword, ask for additional keywords"""
     keyword = update.message.text.lower()
 
     # Check for minimum=X input
@@ -114,12 +119,14 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
 
 
 def choose_keyword_ok(update: Update, context: CallbackContext) -> int:
+    """Method one_keyword: Set method, ask for keyword"""
     request_dictionary[update.message.chat.id].method = "one_keyword"
     update.message.reply_text("Please tell me the keyword you want to analyze (no case sensitivity).")
     return KEYWORD_OK
 
 
 def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
+    """Method one_keyword: Set keyword, ask for first artist"""
 
     # Check spelling and type (OR?) of input. If correct, add to request.keywords and create keyword_str
     keyword = update.message.text.lower()
@@ -139,6 +146,7 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
 
 
 def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
+    """Method one_keyword: Get artist search results from genius and make artist suggestions"""
     artist_search_str = update.message.text
 
     # Check for minimum=X input
@@ -164,6 +172,7 @@ def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
 
 
 def add_artists_ok(update: Update, context: CallbackContext) -> int:
+    """Method one_keyword: Set artist, ask for additional artists"""
     artist_confirmation_str = update.message.text
     reply_markup = ReplyKeyboardRemove()
 
@@ -194,7 +203,8 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
 
 @run_async
 def get_analysis(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text(f'Analysis started. This might take a while. (If I havent answered after 20min, there was probably an error. Please try again later or try other artists/keywords. Send /start to restart.)')
+    """Get image, CSV and info string from analysis_creator and send to user, close user request"""
+    update.message.reply_text(f'Analysis started. This might take a while. (If I haven\'t answered after 20min, there was probably an error. Please try again later or try other artists/keywords. Send /start to restart.)')
 
     # Load saved artist files if they exist
     for artist_new in request_dictionary[update.message.chat.id].artists:
@@ -228,6 +238,7 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
 
 
 def info_start(update: Update, context: CallbackContext) -> int:
+    """Send detailed info if requested from start message"""
     send_info(update)
     update.message.reply_text("Send /example for examples. To start, please choose a method: send /artist to analyze 1 artist (compare usage of up to 10 keywords) or /keyword to analyze 1 keyword (compare lyrics of up to 4 artists).")
 
@@ -235,6 +246,7 @@ def info_start(update: Update, context: CallbackContext) -> int:
 
 
 def info_end(update: Update, context: CallbackContext) -> int:
+    """Send detailed info if requested after analysis was sent"""
     send_info(update)
     update.message.reply_text(f'Send /start anytime to restart.')
 
@@ -243,6 +255,7 @@ def info_end(update: Update, context: CallbackContext) -> int:
 
 
 def example(update: Update, context: CallbackContext) -> int:
+    """Send example images"""
     photo_list = [InputMediaPhoto(open('examples/kanye.jpg', 'rb')), InputMediaPhoto(open('examples/love.jpg', 'rb')), InputMediaPhoto(open('examples/gucci_mane.jpg', 'rb')), InputMediaPhoto(open('examples/bitch.jpg', 'rb'))]
     context.bot.send_media_group(chat_id=update.message.chat.id, media=photo_list)
 
@@ -315,19 +328,19 @@ def main() -> None:
     dispatcher.add_handler(conv_handler)
 
     # Start the Bot with Heroku backend
-    updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path="***REMOVED_TELEGRAM_BOT_TOKEN***")
-    updater.bot.setWebhook('https://murmuring-stream-73575.herokuapp.com/' + "***REMOVED_TELEGRAM_BOT_TOKEN***")
+    # updater.start_webhook(listen="0.0.0.0", port=int(PORT), url_path="***REMOVED_TELEGRAM_BOT_TOKEN***")
+    # updater.bot.setWebhook('https://murmuring-stream-73575.herokuapp.com/' + "***REMOVED_TELEGRAM_BOT_TOKEN***")
 
     # Start the Bot with local backend
-    # updater.start_polling()
+    updater.start_polling()
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
+    # Run the bot until you press Ctrl-C or the process receives SIGINT, SIGTERM or SIGABRT.
+    # This should be used most of the time, since start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
 
 
 def clean_dictionaries():
+    """Clean artist_list and request_dictionary for garbage collection and saving memory"""
     if len(artist_list) > 100:
         del artist_list[:10]
 
@@ -336,7 +349,17 @@ def clean_dictionaries():
         request_dictionary.clear()
 
 
+def get_artist_search_results(artist_search_str):
+    """Get artist search results from genius and make artist suggestions list"""
+    my_genius_scraper = Genius_scraper()
+    artist_suggestions = my_genius_scraper.get_artists_name_url_id(artist_search_str)
+    if len(artist_suggestions) > 9:
+        artist_suggestions = artist_suggestions[:9]
+    return artist_suggestions
+
+
 def make_artist_reply_keyboard(artist_suggestions):
+    """Create reply keyboard containing the artist suggestions"""
     custom_keyboard = []
     custom_keyboard_row_draft = []
     for i, suggestion in enumerate(artist_suggestions):
@@ -352,15 +375,8 @@ def make_artist_reply_keyboard(artist_suggestions):
     return reply_markup
 
 
-def get_artist_search_results(artist_search_str):
-    my_genius_scraper = Genius_scraper()
-    artist_suggestions = my_genius_scraper.get_artist_name_url_id_of_first_4(artist_search_str)
-    if len(artist_suggestions) > 9:
-        artist_suggestions = artist_suggestions[:9]
-    return artist_suggestions
-
-
 def make_keywords_string(request):
+    """Returns a string from the keywords in the request object"""
     list_for_keywords_string = []
     for keyword in request.keywords:
         if isinstance(keyword, str):
@@ -372,13 +388,15 @@ def make_keywords_string(request):
 
 
 def add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request):
+    """Sets request.artist to the artist draft matching a string"""
     for artist_draft in request.artist_drafts:
         if artist_draft["name"] == artist_confirmation_str:
             request.artists.append(Artist(artist_draft["name"], artist_draft["id"]))
 
 
-def set_minimum_n_per_year(input, update, keyword_or_artist):
-    minimum_n_per_year = input.lower()[input.lower().find('minimum=') + 8:]
+def set_minimum_n_per_year(input_string, update, keyword_or_artist):
+    """Sets request.minimum_n_per_year based on user input string"""
+    minimum_n_per_year = input_string.lower()[input_string.lower().find('minimum=') + 8:]
     if minimum_n_per_year.isnumeric():
         minimum_n_per_year = int(minimum_n_per_year)
         if minimum_n_per_year == 0:
@@ -391,10 +409,11 @@ def set_minimum_n_per_year(input, update, keyword_or_artist):
     update.message.reply_text(f'Please enter a number (1 or higher) as minimum. Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
 
 
-def set_year_span(input, update, keyword_or_artist):
-    start_index = input.lower().find('years=')
-    year_start_input = input.lower()[start_index + 6: start_index + 10]
-    year_end_input = input.lower()[start_index + 11: start_index + 15]
+def set_year_span(input_string, update, keyword_or_artist):
+    """Sets request.year_span, .year_start and .year_end based on user input string"""
+    start_index = input_string.lower().find('years=')
+    year_start_input = input_string.lower()[start_index + 6: start_index + 10]
+    year_end_input = input_string.lower()[start_index + 11: start_index + 15]
 
     try:
         if year_start_input.isnumeric() and 1900 <= int(year_start_input) < current_year:
@@ -411,14 +430,15 @@ def set_year_span(input, update, keyword_or_artist):
 
 
 def send_info(update):
+    """Send detailed info"""
     update.message.reply_text(
         '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
         '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
-        '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the word "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
+        '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the words "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "love/loved". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
         '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
         '*years=:* By default, I include all years in the table in which at least one of the artist(s) has at least one total songs and all years in the graph in which at least one artist has at least 5 (or minimum=X) songs. If you are instead only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
-        '*Feature parts:* I cant distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
-        '*If I dont respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still dont respond, the bot is offline for some reason. Try again later/tomorrow.\n'
+        '*Feature parts:* I can\'t distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
+        '*If I dont respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still don\'t respond, the bot is offline for some reason. Try again later/tomorrow.\n'
         '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n'
         '*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius, shoutout to them.',
         parse_mode="Markdown")
