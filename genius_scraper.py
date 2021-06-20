@@ -42,18 +42,19 @@ class Genius_scraper:
             song_return_objects_main_artist = random.sample(song_return_objects_main_artist, 900)
 
         # Make url list from song return objects
-        artist_songs_list = [Song("http://genius.com" + song["path"]) for song in song_return_objects_main_artist]
+        #artist_songs_list = [Song("http://genius.com" + song["path"]) for song in song_return_objects_main_artist]
+        artist_songs_list = [Song("http://genius.com" + song["path"], song["id"], artist_name, song["title"]) for song in song_return_objects_main_artist]
 
         # Get HTML and add song data to each song
         if len(artist_songs_list) > 600:
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list[300:599], "301 - 600")
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list[600:], "601 - 900")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list[300:599], "301 - 600")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list[600:], "601 - 900")
         elif len(artist_songs_list) > 300:
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list[300:], "301 - 600")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list[:299], "1 - 300")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list[300:], "301 - 600")
         else:
-            self.add_song_data_to_songs_list(artist_name, artist_songs_list, "(less than 300)")
+            self.add_year_and_lyrics_to_songs_in_songs_list(artist_name, artist_songs_list, "(less than 300)")
 
         print(f'END: Successfully downloaded and found lyrics of {len([song for song in artist_songs_list if song.lyrics is not None])} songs, found year of {len([song for song in artist_songs_list if song.year != "unknown year"])} songs.')
 
@@ -78,16 +79,6 @@ class Genius_scraper:
                     artist_suggestions.append({"name": artist_name, "url": artist_url, "id": artist_id})
 
         return artist_suggestions
-
-    def get_artist_name_url_id(self, artist_search_str):
-        """Gets first artist from the genius search results for a search string (with name, url and id)."""
-        path = "search"
-        params = {'q': artist_search_str}
-        data = self.get_json(path=path, params=params)
-        artist_name = data['response']['hits'][0]['result']['primary_artist']['name']
-        artist_url = data['response']['hits'][0]['result']['primary_artist']['url']
-        artist_id = data['response']['hits'][0]['result']['primary_artist']['id']
-        return artist_name, artist_url, artist_id
 
     def get_songs_by_artist(self, artist_id):
         """Get all the song ids from an artist."""
@@ -120,7 +111,7 @@ class Genius_scraper:
 
         return songs
 
-    def add_song_data_to_songs_list(self, artist_name, songs_list, index):
+    def add_year_and_lyrics_to_songs_in_songs_list(self, artist_name, songs_list, index):
         """Edit a list of songs: Download HTMLs, exctract title, year and lyrics and add them to songs"""
 
         # Add HTMLs to songs
@@ -132,7 +123,9 @@ class Genius_scraper:
 
         # Add song data (title, artist, year, lyrics) to songs
         print("Adding title, artist, year, lyrics ...")
-        self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
+        for song in songs_list_with_html:
+            song.year = self.get_song_year(song.html)
+            song.lyrics = self.get_song_lyrics(song.html)
         # print(f'Successfully found year of {len([song for song in songs_list if song.year != "unknown year"])} songs.')
         # print()
 
@@ -141,7 +134,9 @@ class Genius_scraper:
             songs_list_no_html_or_no_year = [song for song in songs_list if song.html is None or song.year == "unknown year"]
             self.get_htmls_aio(songs_list_no_html_or_no_year)
             songs_list_with_html = [song for song in songs_list_no_html_or_no_year if song.html is not None]
-            self.add_title_artist_year_lyrics_to_songs_list(artist_name, songs_list_with_html)
+            for song in songs_list_with_html:
+                song.year = self.get_song_year(song.html)
+                song.lyrics = self.get_song_lyrics(song.html)
             print(f'Successfully downloaded and found year of another {len([song for song in songs_list_no_html_or_no_year if song.year != "unknown year"])} songs.')
 
         # Delete HTMLs from song objects
@@ -166,28 +161,6 @@ class Genius_scraper:
 
         asyncio.run(main(songs_list))
 
-    def add_title_artist_year_lyrics_to_songs_list(self, artist_name, songs_list):
-        """Edit songs list: Add .artist and add .title, .year, .lyrics based on .html"""
-        for song in songs_list:
-            song.title = self.get_song_title(song.html)
-            song.artist = artist_name
-            song.year = self.get_song_year(song.html)
-            song.lyrics = self.get_song_lyrics(song.html)
-
-    def get_song_title(self, html):
-        """Extracts the song title from an html"""
-        song_title = html.find("h1", class_="header_with_cover_art-primary_info-title")
-        if song_title is None:
-            # print("(Title is not in h1 with class header_with_cover_art-primary_info-title)")
-            song_title = html.find('h1', class_=re.compile(r'^SongHeader__Title'))
-        if song_title is None:
-            # print("No title found, ", end='')
-            return "unknown title"
-        else:
-            song_title_string = song_title.get_text()
-            # print("Found title: {}, ".format(song_title_string), end='')
-        return song_title_string
-
     def get_song_year(self, html):
         """Extracts the song year from an html"""
         try:
@@ -199,7 +172,8 @@ class Genius_scraper:
         except:
             try:
                 # Try to find in p
-                release_date_element = html.find("p", string="Release Date")
+                #release_date_element = html.find("p", string="Release Date")
+                release_date_element = html.find("p", string="SAFGFDFGSHFAD")
                 release_date = release_date_element.next_sibling
                 release_year = int(release_date[-4:])
 
@@ -222,7 +196,7 @@ class Genius_scraper:
         if release_year is not None:
             try:
                 release_year_int = int(release_year)
-                if 1800 < release_year_int < datetime.datetime.now().year:
+                if 1900 < release_year_int <= datetime.datetime.now().year:
                     # print(f"Found year: {release_year}, ", end='')
                     return release_year_int
                 else:

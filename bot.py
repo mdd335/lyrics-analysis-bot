@@ -53,7 +53,7 @@ def confirm_artist_oa(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].artist_drafts = artist_suggestions
     reply_markup = make_artist_reply_keyboard(artist_suggestions)
     artists_string = ', '.join([f'[{artist_suggestion["name"]}]({artist_suggestion["url"]})' for artist_suggestion in artist_suggestions])
-    update.message.reply_text(f'I found (Genius pages are linked): {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+    update.message.reply_text(f'I found: {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
 
     return ARTIST_CONF_OA
 
@@ -76,7 +76,7 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
         add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
 
     # Ask for first keyword
-    update.message.reply_text(f'Please choose the first keyword to analyze (no case sensitivity).')
+    update.message.reply_text(f'Please tell me the first keyword to analyze (no case sensitivity).')
     return KEYWORD_OA
 
 
@@ -108,13 +108,13 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
     num_of_keywords = len(request_dictionary[update.message.chat.id].keywords)
     keywords_string = make_keywords_string(request_dictionary[update.message.chat.id])
     if num_of_keywords == 1:
-        update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
+        update.message.reply_text(f'{num_of_keywords} Keyword: {keywords_string}.\nAdd another keyword or send /analyze to start.')
     elif num_of_keywords == 4:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nFor a good looking graph, I suggest using no more than 4-5 keywords. Add another keyword or send /analyze to start analysis.')
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nFor a good looking graph, I suggest using no more than 4-5 keywords. Add another keyword or send /analyze to start.')
     elif num_of_keywords < 10:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start analysis.')
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nAdd another keyword or send /analyze to start.')
     else:
-        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start analysis.')
+        update.message.reply_text(f'{num_of_keywords} Keywords: {keywords_string}.\nMaximum of 10 keywords reached. Send /analyze to start.')
     return ANALYSIS_OA
 
 
@@ -141,7 +141,7 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
         keyword_str = '"' + keyword + '"'
 
     # Ask for first artist
-    update.message.reply_text(f'I will analyze {keyword_str}. Next, please choose the first artist to analyze.')
+    update.message.reply_text(f'I will analyze {keyword_str}. Next, please tell me the first artist to analyze.')
     return ARTIST_OK
 
 
@@ -167,7 +167,7 @@ def confirm_artist_ok(update: Update, context: CallbackContext) -> int:
     request_dictionary[update.message.chat.id].artist_drafts = artist_suggestions
     reply_markup = make_artist_reply_keyboard(artist_suggestions)
     artists_string = ', '.join([f'[{artist_suggestion["name"]}]({artist_suggestion["url"]})' for artist_suggestion in artist_suggestions])
-    update.message.reply_text(f'I found (Genius pages are linked): {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+    update.message.reply_text(f'I found: {artists_string}. Please choose the right artist.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
     return ARTIST_CONF_OK
 
 
@@ -193,11 +193,11 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
     num_of_artists = len(request_dictionary[update.message.chat.id].artists)
     artists_string = ', '.join([artist.name for artist in request_dictionary[update.message.chat.id].artists])
     if num_of_artists == 1:
-        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start analysis.', reply_markup=reply_markup)
+        update.message.reply_text(f'{num_of_artists} Artist: {artists_string}.\nAdd another artist or send /analyze to start.', reply_markup=reply_markup)
     elif num_of_artists < 4:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start analysis.', reply_markup=reply_markup)
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nAdd another artist or send /analyze to start.', reply_markup=reply_markup)
     else:
-        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 4 artists reached. Send /analyze to start analysis.', reply_markup=reply_markup)
+        update.message.reply_text(f'{num_of_artists} Artists: {artists_string}.\nMaximum of 4 artists reached. Send /analyze to start.', reply_markup=reply_markup)
     return ANALYSIS_OK
 
 
@@ -403,10 +403,10 @@ def set_minimum_n_per_year(input_string, update, keyword_or_artist):
             minimum_n_per_year = 1
         if minimum_n_per_year > 0:
             request_dictionary[update.message.chat.id].minimum_n_per_year = minimum_n_per_year
-            update.message.reply_text(f'Graph will have data points for years with at least {minimum_n_per_year} total songs. Add another {keyword_or_artist} or send /analyze to start analysis.')
+            update.message.reply_text(f'Graph will have data points for years with at least {minimum_n_per_year} total songs. Add another {keyword_or_artist} or send /analyze to start.')
             return
 
-    update.message.reply_text(f'Please enter a number (1 or higher) as minimum. Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
+    update.message.reply_text(f'Please enter a number (1 or higher) as minimum. Try again or add another {keyword_or_artist} or send /analyze to start.')
 
 
 def set_year_span(input_string, update, keyword_or_artist):
@@ -421,19 +421,19 @@ def set_year_span(input_string, update, keyword_or_artist):
                 request_dictionary[update.message.chat.id].custom_year_span = True
                 request_dictionary[update.message.chat.id].year_start = int(year_start_input)
                 request_dictionary[update.message.chat.id].year_end = int(year_end_input)
-                update.message.reply_text(f'I will analyze the years from {year_start_input} to {year_end_input}. Add another {keyword_or_artist} or send /analyze to start analysis.')
+                update.message.reply_text(f'I will analyze the years from {year_start_input} to {year_end_input}. Add another {keyword_or_artist} or send /analyze to start.')
                 return
     except:
         print("Error with year span input")
 
-    update.message.reply_text(f'Please enter a year span between 1900 and today, e.g. "years=2010-2020". Try again or add another {keyword_or_artist} or send /analyze to start analysis.')
+    update.message.reply_text(f'Please enter a year span between 1900 and today, e.g. "years=2010-2020". Try again or add another {keyword_or_artist} or send /analyze to start.')
 
 
 def send_info(update):
     """Send detailed info"""
     update.message.reply_text(
-        '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For all these songs (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (works 99 % of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
-        '*Entering artists:* I use your input as a search term on Genius and suggest the artists that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those" if your artist is not one of the suggestions.\n'
+        '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For each song (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (fails ~1% of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
+        '*Entering artists:* I use your input as a search term on Genius and suggest the artists of the songs that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those".\n'
         '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the words "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "love/loved". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
         '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
         '*years=:* By default, I include all years in the table in which at least one of the artist(s) has at least one total songs and all years in the graph in which at least one artist has at least 5 (or minimum=X) songs. If you are instead only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
