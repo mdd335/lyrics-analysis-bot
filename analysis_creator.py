@@ -73,11 +73,11 @@ class Analysis_creator:
         """Make example string explaining the graph, based on data list"""
         if request.method == "one_artist":
             for data_row in data_list:
-                if data_row["songs total"] != 0:
+                if data_row["songs total"] >= 5:
                     return f'Example: In {data_row["Year"]}, {data_row["songs with " + self.make_keyword_str(request.keywords[0])]} of the {data_row["songs total"]} {request.artists[0].name} songs that I found contained the term {self.make_keyword_str(request.keywords[0])}. That is {round(data_row["% with " + self.make_keyword_str(request.keywords[0])])} %.'
         elif request.method == "one_keyword":
             for data_row in data_list:
-                if data_row[request.artists[0].name + ":\nsongs total"] != 0:
+                if data_row[request.artists[0].name + ":\nsongs total"] >= 5:
                     info_songs_with_keyword = data_row[request.artists[0].name + ":\nsongs with " + self.make_keyword_str(request.keywords[0])]
                     info_songs_total = data_row[request.artists[0].name + ":\nsongs total"]
                     info_percent_with_keyword = data_row[request.artists[0].name + ":\n% with " + self.make_keyword_str(request.keywords[0])]
@@ -91,8 +91,11 @@ class Analysis_creator:
         # Create plot
         fig, ax = plt.subplots()
 
+        # Minor x-axis ticks
+        ax.set_xticks(range(data_list_only_years[0]["Year"], data_list_only_years[-1]["Year"] + 1), minor=True)
+
         # Grid
-        plt.grid(b=None, which='major', axis='both', color="whitesmoke")
+        plt.grid(b=None, which='both', axis='both', color="whitesmoke")
 
         for keyword_or_artist in keywords_or_artists:
 

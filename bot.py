@@ -67,10 +67,10 @@ def choose_first_keyword_oa(update: Update, context: CallbackContext) -> int:
     if artist_confirmation_str == "Money Boy":
         update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
     if "None of those" in artist_confirmation_str:
-        update.message.reply_text(f'Try spelling the artist exactly as it is spelled on [Genius](www.genius.com). If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+        update.message.reply_text(f'Try spelling the artist exactly as it is spelled on [Genius](www.genius.com). If I still don\'t suggest the right artist, try entering a unique album or song by the artist instead. Please try again.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
         return ARTIST_OA
     elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in request_dictionary[update.message.chat.id].artist_drafts):
-        update.message.reply_text(f'Something didnt work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
+        update.message.reply_text(f'Something didn\'t work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
         return ARTIST_OA
     else:
         add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
@@ -96,7 +96,7 @@ def add_keywords_oa(update: Update, context: CallbackContext) -> int:
 
     # Check spelling and type (OR?) of input. If correct, add to request.keywords
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
-        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        update.message.reply_text(f'Punctuation and special characters don\'t work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "love/loved". Please enter the keyword again.')
         return KEYWORD_OA
     elif len(request_dictionary[update.message.chat.id].keywords) < 10:
         if "/" in keyword:
@@ -131,7 +131,7 @@ def choose_first_artist_ok(update: Update, context: CallbackContext) -> int:
     # Check spelling and type (OR?) of input. If correct, add to request.keywords and create keyword_str
     keyword = update.message.text.lower()
     if any(elem in keyword for elem in [".", ",", ":", ";", "(", ")", "!", "?", "\'", "\"", "#"]):
-        update.message.reply_text(f'Punctuation and special characters dont work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "america/usa". Please enter the keyword again.')
+        update.message.reply_text(f'Punctuation and special characters don\'t work in keywords. Please only use letters and numbers. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "love/loved". Please enter the keyword again.')
         return KEYWORD_OK
     elif "/" in keyword:
         request_dictionary[update.message.chat.id].keywords.append(keyword.split("/"))
@@ -181,10 +181,10 @@ def add_artists_ok(update: Update, context: CallbackContext) -> int:
         if artist_confirmation_str == "Money Boy":
             update.message.reply_text(f'Gute Wahl Mois', reply_markup=reply_markup)
         if "None of those" in artist_confirmation_str:
-            update.message.reply_text(f'Try spelling the artist exactly as it is spelled on [Genius](www.genius.com). If I still dont suggest the right artist, try entering a unique album or song title of the artist instead. Please enter the artist again.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
+            update.message.reply_text(f'Try spelling the artist exactly as it is spelled on [Genius](www.genius.com). If I still don\'t suggest the right artist, try entering a unique album or song by the artist instead. Please try again.', parse_mode="Markdown", disable_web_page_preview=True, reply_markup=reply_markup)
             return ARTIST_OK
         elif not any(artist_confirmation_str == artist_draft['name'] for artist_draft in request_dictionary[update.message.chat.id].artist_drafts):
-            update.message.reply_text(f'Something didnt work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
+            update.message.reply_text(f'Something didn\'t work. Please enter the artist again. Make sure to use the Telegram keyboard buttons to confirm the artist in the next step.', reply_markup=reply_markup)
             return ARTIST_OK
         else:
             add_artist_from_drafts_matching_string_to_artists(artist_confirmation_str, request_dictionary[update.message.chat.id])
@@ -216,7 +216,7 @@ def get_analysis(update: Update, context: CallbackContext) -> int:
     my_analysis_creator = Analysis_creator()
     img_file, csv_file, info_string = my_analysis_creator.create_analysis(request_dictionary[update.message.chat.id])
 
-    # Save artists as file
+    # Save artists in artist list
     for artist_new in request_dictionary[update.message.chat.id].artists:
         artist_from_list = next((artist for artist in artist_list if artist.name == artist_new.name), None)
         if artist_from_list is None:
@@ -426,22 +426,23 @@ def set_year_span(input_string, update, keyword_or_artist):
     except:
         print("Error with year span input")
 
-    update.message.reply_text(f'Please enter a year span between 1900 and today, e.g. "years=2010-2020". Try again or add another {keyword_or_artist} or send /analyze to start.')
+    update.message.reply_text(f'Please enter a year span between 1900 and today, e.g. "years=2000-2010". Try again or add another {keyword_or_artist} or send /analyze to start.')
 
 
 def send_info(update):
     """Send detailed info"""
     update.message.reply_text(
-        '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the Genius API. For each song (if an artist has >900 songs, I take a random sample of 900), I check the lyrics page and try to get the release year (fails ~1% of the time) and lyrics. I remove all punctuation, special characters and text in squared brackets from the lyrics. (I then store this data internally for ~12h to be faster if the same artist is requested again.) Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
+        '*How does it work?* For each artist in your request, I get a list of their songs as a main artist from the [Genius](www.genius.com) API. For each song (if an artist has >900 songs, I take a random sample of 900), I check the web page and get the lyrics and release year (if no release year is stated, I look for an album release year). I remove all punctuation, special characters and text in squared brackets from the lyrics. Then I search the lyrics of each song for the keyword(s) you gave me, sort by years and generate a graph (.jpg) and a table (.csv) based on that.\n'
         '*Entering artists:* I use your input as a search term on Genius and suggest the artists of the songs that come up. Please use the Telegram custom keyboard that I provide to choose the right artist or choose "None of those".\n'
         '*Keywords:* I check if exactly this term (without case sensitivity) appears in the lyrics as a whole word. So the keyword „hi“ matches the words "hi" or „Hi“ but not „hit“. Use blank spaces if you are interested in word combinations, e.g. "i am". Use "/" to check if songs contain one OR the other keyword, e.g. "love/loved". Punctuation in the lyrics is regarded as blank spaces, so to find „R.I.P.“ you would have to enter „r i p“.\n'
         '*minimum=:* By default, I only make data points in the graph for years in which the artist has a minimum of 5 total songs. You can change this by sending „minimum=X“ (with X being a number) when asked for keywords/artists in the last step. A higher number can make the graph look better because there are less outliers. Set to 1 to include all years.\n'
-        '*years=:* By default, I include all years in the table in which at least one of the artist(s) has at least one total songs and all years in the graph in which at least one artist has at least 5 (or minimum=X) songs. If you are instead only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
+        '*years=:* By default, I include all years in the table in which at least one of the artist(s) has at least one total song and all years in the graph in which at least one artist has at least 5 (or minimum=X) songs. If you are only interested in a certain time span, you can change this by sending „years=XXXX-XXXX“ (with XXXX being years) when asked for keywords/artists in the last step.\n'
         '*Feature parts:* I can\'t distinguish between different artists on one song. So if a song has a feature part by another artist, those lyrics are considered, too.\n'
-        '*If I dont respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still don\'t respond, the bot is offline for some reason. Try again later/tomorrow.\n'
-        '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/years. Also, feel free to write an email and describe the bug.\n'
+        '*Accuracy:* Of course results are only as complete and accurate as the data on Genius is. Also, getting song data and extracting the release year fails from time to time, so some songs may be missing or may falsely have an unknown year. This should be the case for <1% of songs.\n'
+        '*If I don\'t respond:* If I am creating an analysis, please wait up to 20min for me to finish. Otherwise, send /start to restart. If I still don\'t respond, the bot is offline for some reason. Try again later/tomorrow.\n'
+        '*Other bugs:* If there seems to be some other problem, please restart and try other artists/keywords/settings. Also, feel free to write an email and describe the bug.\n'
         '*Contact:* If you have questions or feedback, please contact dripdroparchiv@gmail.com. Not affiliated with Genius, shoutout to them.',
-        parse_mode="Markdown")
+        parse_mode="Markdown", disable_web_page_preview=True)
 
 
 if __name__ == '__main__':

@@ -177,6 +177,13 @@ class Genius_scraper:
                 release_date = release_date_element.next_sibling
                 release_year = int(release_date[-4:])
 
+                '''
+                # Try to get via Genius API
+                path = f"songs/{id}"
+                data = self.get_json(path=path)
+                release_year = data['response']['song']['release_date'][0:4]
+                '''
+
             except:
                 try:
                     # No release date found, so look for album release year
